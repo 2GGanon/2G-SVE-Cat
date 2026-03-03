@@ -114,6 +114,57 @@ let zoomNavLeft = null;
 let zoomNavRight = null;
 let rarityOutliers = [];
 
+function hasNativeBridge() {
+  return typeof window !== "undefined" && window.SVEBridge && typeof window.SVEBridge.postMessage === "function";
+}
+
+function nativePost(message) {
+  if (!hasNativeBridge()) return false;
+  try {
+    window.SVEBridge.postMessage(JSON.stringify(message));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function importCollectionFromText(jsonText) {
+  const parsed = JSON.parse(String(jsonText || "{}"));
+  if (!parsed || typeof parsed !== "object" || typeof parsed.data !== "object") {
+    throw new Error("Invalid format");
+  }
+  collection = parsed.data;
+  saveCollection();
+  renderTable();
+}
+
+window.__sveNativeExportResult = function __sveNativeExportResult(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (payload.ok) {
+      alert(`Collection exported to:\n${payload.path}`);
+      return;
+    }
+    alert(`Native export failed: ${payload.error || "Unknown error"}`);
+  } catch {
+    alert("Native export failed.");
+  }
+};
+
+window.__sveNativeImportResult = function __sveNativeImportResult(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (!payload.ok) {
+      alert(`Import failed: ${payload.error || "Unknown error"}`);
+      return;
+    }
+    importCollectionFromText(payload.jsonText || "");
+    alert(`Collection import complete.\nLoaded:\n${payload.path}`);
+  } catch {
+    alert("Import failed. Use a valid export JSON file.");
+  }
+};
+
 function setCodeFromCardCode(cardCode) {
   const match = (cardCode || "").match(/^([A-Za-z0-9]+)-/);
   return match ? match[1] : "UNKNOWN";
@@ -494,6 +545,10 @@ async function exportCollection() {
   const jsonText = JSON.stringify(payload, null, 2);
   const filename = "sve-collection-export.json";
 
+  if (nativePost({ type: "export_collection", jsonText })) {
+    return;
+  }
+
   if ("showSaveFilePicker" in window) {
     try {
       const handle = await window.showSaveFilePicker({
@@ -564,13 +619,7 @@ function importCollection(file) {
   const reader = new FileReader();
   reader.onload = () => {
     try {
-      const parsed = JSON.parse(String(reader.result || "{}"));
-      if (!parsed || typeof parsed !== "object" || typeof parsed.data !== "object") {
-        throw new Error("Invalid format");
-      }
-      collection = parsed.data;
-      saveCollection();
-      renderTable();
+      importCollectionFromText(String(reader.result || "{}"));
       alert("Collection import complete.");
     } catch {
       alert("Import failed. Use a valid export JSON file.");
@@ -582,6 +631,10 @@ function importCollection(file) {
 async function promptImportCollection() {
   const proceed = window.confirm("Import collection now? Select a previously exported JSON file.");
   if (!proceed) return;
+
+  if (nativePost({ type: "import_latest" })) {
+    return;
+  }
 
   if ("showOpenFilePicker" in window) {
     try {
