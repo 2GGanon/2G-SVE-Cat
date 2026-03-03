@@ -12,16 +12,8 @@
     <header class="app-header">
       <div>
         <h1><span>Shadowverse: Evolve</span><span>Collection Tracker</span></h1>
-        <div class="playset-tracker-inline">
-          <strong id="incompletePlaysets">0</strong>
-          <span>Incomplete Playsets</span>
-          <label class="tracker-toggle">
-            <input id="rarityModeToggle" type="checkbox" />
-            <span id="rarityModeLabel">Max</span>
-          </label>
-        </div>
       </div>
-      <img class="header-art" src="./assets/hero-collection.svg" alt="Card collection illustration" />
+      <img class="header-art" src="./assets/2G.webp" alt="2G icon" />
     </header>
 
     <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle search sidebar">&#128269;</button>
@@ -44,10 +36,16 @@
           <div id="rarityFilterGroup" class="rarity-group"></div>
         </div>
 
-        <label class="control checkbox">
-          <input id="ownedOnly" type="checkbox" />
-          <span>Owned only</span>
-        </label>
+        <div class="filter-toggles">
+          <label class="control checkbox">
+            <input id="ownedOnly" type="checkbox" />
+            <span>Owned</span>
+          </label>
+          <label class="control checkbox">
+            <input id="incompleteOnly" type="checkbox" />
+            <span>Incomplete</span>
+          </label>
+        </div>
       </div>
       <div class="actions">
         <button id="exportBtn" type="button">Export Collection</button>
