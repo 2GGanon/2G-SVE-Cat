@@ -119,20 +119,27 @@ body {
   overflow: auto;
   z-index: 700;
   transition: transform 0.25s ease;
+  border-top-right-radius: 0;
 }
 
 .sidebar-toggle {
   position: fixed;
-  top: 50%;
-  left: 18.5rem;
-  transform: translateY(-50%);
+  top: 6.2rem;
+  left: calc(0.75rem + 18.8rem);
+  transform: none;
   width: 2.2rem;
   height: 2.8rem;
   border-radius: 0 12px 12px 0;
-  border-left: 0;
+  border-left: 0 !important;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
   z-index: 710;
   font-size: 1.1rem;
   line-height: 1;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
   transition: left 0.25s ease;
 }
 
@@ -142,6 +149,7 @@ body.sidebar-hidden .sidebar-panel {
 
 body.sidebar-hidden .sidebar-toggle {
   left: 0;
+  border-left: 1px solid var(--border);
 }
 
 body.sidebar-hidden .layout {
@@ -255,7 +263,9 @@ tbody tr {
   border: 1px solid #2c3f68;
   border-radius: 10px;
   background: #0e1628;
-  padding: 0.25rem;
+  padding: 0.35rem;
+  width: calc(var(--thumb-w) + 28px);
+  justify-self: center;
   justify-items: center;
 }
 
@@ -299,7 +309,7 @@ table td:nth-child(6) {
 }
 
 .card-art-cell {
-  width: calc(var(--thumb-w) + 12px);
+  width: calc(var(--thumb-w) + 16px);
   padding: 0.25rem;
   display: grid;
   justify-items: center;
@@ -357,8 +367,7 @@ body.zoom-active::before {
   background: rgba(12, 22, 45, 0.95);
   color: #e4ecff;
   font-weight: 700;
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .zoom-nav-left {
@@ -370,7 +379,7 @@ body.zoom-active::before {
 }
 
 body.zoom-active .zoom-nav {
-  opacity: 1;
+  display: block;
   pointer-events: auto;
 }
 
@@ -437,10 +446,12 @@ body.zoom-active .zoom-nav {
     top: 5.6rem;
     width: min(86vw, 18.8rem);
     max-height: calc(100vh - 6.6rem);
+    border-top-right-radius: 0;
   }
 
   .sidebar-toggle {
-    left: calc(min(86vw, 18.8rem) - 0.2rem);
+    top: 5.6rem;
+    left: calc(0.55rem + min(86vw, 18.8rem));
   }
 
   body.sidebar-hidden .sidebar-toggle {
