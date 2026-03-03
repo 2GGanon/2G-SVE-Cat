@@ -253,9 +253,10 @@ thead {
 
 tbody {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(calc(var(--thumb-w) + 36px), 1fr));
   gap: 0.45rem;
   align-items: start;
+  justify-items: center;
 }
 
 tbody tr {
@@ -264,8 +265,8 @@ tbody tr {
   border-radius: 10px;
   background: #0e1628;
   padding: 0.35rem;
-  width: calc(var(--thumb-w) + 28px);
-  justify-self: center;
+  width: 100%;
+  max-width: calc(var(--thumb-w) + 28px);
   justify-items: center;
 }
 
@@ -468,6 +469,7 @@ body.zoom-active .zoom-nav {
 
   tbody {
     gap: 0.3rem;
+    grid-template-columns: repeat(3, minmax(calc(var(--thumb-w) + 34px), 1fr));
   }
 
   .table-wrap {
