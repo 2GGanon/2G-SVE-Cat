@@ -72,6 +72,7 @@ const rarityFilterGroup = document.getElementById("rarityFilterGroup");
 const ownedOnly = document.getElementById("ownedOnly");
 const incompleteOnly = document.getElementById("incompleteOnly");
 const exportBtn = document.getElementById("exportBtn");
+const importBtn = document.getElementById("importBtn");
 const importInput = document.getElementById("importInput");
 const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
@@ -483,18 +484,45 @@ function renderTable() {
   tableBody.appendChild(fragment);
 }
 
-function exportCollection() {
+async function exportCollection() {
+  const proceed = window.confirm("Export collection now? You can choose where to save the JSON file.");
+  if (!proceed) return;
   const payload = {
     exportedAt: new Date().toISOString(),
     data: collection,
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const jsonText = JSON.stringify(payload, null, 2);
+  const filename = "sve-collection-export.json";
+
+  if ("showSaveFilePicker" in window) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [
+          {
+            description: "JSON",
+            accept: { "application/json": [".json"] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(jsonText);
+      await writable.close();
+      alert("Collection export complete.");
+      return;
+    } catch {
+      // Fall back to download link.
+    }
+  }
+
+  const blob = new Blob([jsonText], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "sve-collection-export.json";
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+  alert("Collection export started. Check your Downloads folder if no location picker appeared.");
 }
 
 function importCollection(file) {
@@ -514,6 +542,32 @@ function importCollection(file) {
     }
   };
   reader.readAsText(file);
+}
+
+async function promptImportCollection() {
+  const proceed = window.confirm("Import collection now? Select a previously exported JSON file.");
+  if (!proceed) return;
+
+  if ("showOpenFilePicker" in window) {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        types: [
+          {
+            description: "JSON",
+            accept: { "application/json": [".json"] },
+          },
+        ],
+      });
+      const file = await handle.getFile();
+      importCollection(file);
+      return;
+    } catch {
+      // Fall back to hidden input.
+    }
+  }
+
+  importInput.click();
 }
 
 async function loadCards() {
@@ -575,7 +629,12 @@ function bindEvents() {
     document.body.classList.toggle("sidebar-hidden");
     updateSidebarState();
   });
-  exportBtn.addEventListener("click", exportCollection);
+  exportBtn.addEventListener("click", () => {
+    exportCollection();
+  });
+  importBtn.addEventListener("click", () => {
+    promptImportCollection();
+  });
   importInput.addEventListener("change", () => {
     const file = importInput.files?.[0];
     if (file) importCollection(file);
