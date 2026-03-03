@@ -68,7 +68,7 @@ function setLabel(setCode) {
 
 const searchInput = document.getElementById("searchInput");
 const setFilter = document.getElementById("setFilter");
-const rarityFilter = document.getElementById("rarityFilter");
+const rarityFilterGroup = document.getElementById("rarityFilterGroup");
 const ownedOnly = document.getElementById("ownedOnly");
 const exportBtn = document.getElementById("exportBtn");
 const importInput = document.getElementById("importInput");
@@ -77,7 +77,6 @@ const rowTemplate = document.getElementById("rowTemplate");
 
 const incompletePlaysetsEl = document.getElementById("incompletePlaysets");
 const rarityModeToggle = document.getElementById("rarityModeToggle");
-const rarityModeLabel = document.getElementById("rarityModeLabel");
 const sidebarToggle = document.getElementById("sidebarToggle");
 
 const RARITY_LABEL_BY_PREFIX = {
@@ -311,23 +310,39 @@ function populateRarityFilter() {
     return a.localeCompare(b);
   });
 
+  rarityFilterGroup.innerHTML = "";
   rarities.forEach((rarity) => {
-    const opt = document.createElement("option");
-    opt.value = rarity;
-    opt.textContent = rarity;
-    rarityFilter.appendChild(opt);
+    const label = document.createElement("label");
+    label.className = "rarity-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = rarity;
+    input.checked = true;
+    input.addEventListener("change", renderTable);
+    const text = document.createElement("span");
+    text.textContent = rarity;
+    label.appendChild(input);
+    label.appendChild(text);
+    rarityFilterGroup.appendChild(label);
   });
+}
+
+function selectedRarities() {
+  const selected = new Set(
+    [...rarityFilterGroup.querySelectorAll("input[type='checkbox']:checked")].map((el) => el.value)
+  );
+  return selected;
 }
 
 function filteredCards() {
   const text = searchInput.value.trim().toLowerCase();
   const set = setFilter.value;
-  const rarity = rarityFilter.value;
+  const selected = selectedRarities();
   const requireOwned = ownedOnly.checked;
 
   return cards.filter((card) => {
     if (set && card.setCode !== set) return false;
-    if (rarity && card.rarity !== rarity) return false;
+    if (selected.size > 0 && !selected.has(card.rarity)) return false;
     if (requireOwned && ownedFor(card.code) === 0) return false;
     if (!text) return true;
     return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
@@ -344,7 +359,6 @@ function renderPlaysetTracker() {
   });
 
   incompletePlaysetsEl.textContent = String(incompletePlaysets);
-  rarityModeLabel.textContent = rarityModeToggle.checked ? "Max" : "Base";
 }
 
 function updateSidebarState() {
@@ -426,8 +440,8 @@ function createZoomNav() {
   zoomNavRight.type = "button";
   zoomNavLeft.className = "zoom-nav zoom-nav-left disabled";
   zoomNavRight.className = "zoom-nav zoom-nav-right disabled";
-  zoomNavLeft.textContent = "â—€";
-  zoomNavRight.textContent = "â–¶";
+  zoomNavLeft.textContent = "<";
+  zoomNavRight.textContent = ">";
   zoomNavLeft.setAttribute("aria-label", "Previous matching card");
   zoomNavRight.setAttribute("aria-label", "Next matching card");
 
@@ -567,7 +581,6 @@ function registerServiceWorker() {
 function bindEvents() {
   searchInput.addEventListener("input", renderTable);
   setFilter.addEventListener("change", renderTable);
-  rarityFilter.addEventListener("change", renderTable);
   ownedOnly.addEventListener("change", renderTable);
   rarityModeToggle.addEventListener("change", renderPlaysetTracker);
   sidebarToggle.addEventListener("click", () => {
