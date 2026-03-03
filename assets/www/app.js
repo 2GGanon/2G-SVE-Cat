@@ -515,6 +515,25 @@ async function exportCollection() {
     }
   }
 
+  const file = new File([jsonText], filename, { type: "application/json" });
+  if ("share" in navigator) {
+    try {
+      const canShareFiles =
+        !("canShare" in navigator) || navigator.canShare({ files: [file] });
+      if (canShareFiles) {
+        await navigator.share({
+          title: "SVE Collection Export",
+          text: "Shadowverse: Evolve collection export",
+          files: [file],
+        });
+        alert("Collection export shared.");
+        return;
+      }
+    } catch {
+      // Fall through to download fallback.
+    }
+  }
+
   const blob = new Blob([jsonText], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -522,7 +541,23 @@ async function exportCollection() {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-  alert("Collection export started. Check your Downloads folder if no location picker appeared.");
+
+  if (location.protocol === "file:") {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(jsonText);
+      }
+    } catch {
+      // ignore clipboard failure
+    }
+    localStorage.setItem("sve_last_export_json", jsonText);
+    localStorage.setItem("sve_last_export_filename", filename);
+    alert(
+      "If file download does not appear on Android, use Share when available. A backup was saved in-app and copied to clipboard when possible."
+    );
+  } else {
+    alert("Collection export started. Check your Downloads folder if no location picker appeared.");
+  }
 }
 
 function importCollection(file) {
