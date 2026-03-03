@@ -17,7 +17,7 @@
           <span>Incomplete Playsets</span>
           <label class="tracker-toggle">
             <input id="rarityModeToggle" type="checkbox" />
-            <span id="rarityModeLabel">Base</span>
+            <span id="rarityModeLabel">Max</span>
           </label>
         </div>
       </div>
@@ -39,12 +39,10 @@
           </select>
         </label>
 
-        <label class="control">
+        <div class="control">
           <span>Rarity</span>
-          <select id="rarityFilter">
-            <option value="">All rarities</option>
-          </select>
-        </label>
+          <div id="rarityFilterGroup" class="rarity-group"></div>
+        </div>
 
         <label class="control checkbox">
           <input id="ownedOnly" type="checkbox" />
@@ -82,7 +80,7 @@
       <tr>
         <td class="card-art-cell">
           <img class="card-art" alt="Card art" loading="lazy" />
-          <div class="owned-overlay">
+          <div class="owned-controls">
             <button class="qty-btn dec" type="button">-</button>
             <span class="qty-value">0</span>
             <button class="qty-btn inc" type="button">+</button>
