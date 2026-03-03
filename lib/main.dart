@@ -36,11 +36,28 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
   bool _isLoading = true;
 
   Future<Directory> _resolveCatalogueDir() async {
-    Directory? base;
     if (Platform.isAndroid) {
-      base = await getExternalStorageDirectory();
+      // Prefer internal storage root so files are outside Android/data.
+      final rootPreferred = Directory('/storage/emulated/0/SVE Catalogue');
+      try {
+        if (!await rootPreferred.exists()) {
+          await rootPreferred.create(recursive: true);
+        }
+        return rootPreferred;
+      } catch (_) {
+        // Fall back when root path is restricted by device policy/scoped storage.
+      }
+
+      final androidScoped = await getExternalStorageDirectory();
+      if (androidScoped != null) {
+        final fallbackDir = Directory('${androidScoped.path}/SVE Catalogue');
+        if (!await fallbackDir.exists()) {
+          await fallbackDir.create(recursive: true);
+        }
+        return fallbackDir;
+      }
     }
-    base ??= await getApplicationDocumentsDirectory();
+    final base = await getApplicationDocumentsDirectory();
     final dir = Directory('${base.path}/SVE Catalogue');
     if (!await dir.exists()) {
       await dir.create(recursive: true);
