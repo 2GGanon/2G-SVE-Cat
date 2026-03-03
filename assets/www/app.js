@@ -70,13 +70,12 @@ const searchInput = document.getElementById("searchInput");
 const setFilter = document.getElementById("setFilter");
 const rarityFilterGroup = document.getElementById("rarityFilterGroup");
 const ownedOnly = document.getElementById("ownedOnly");
+const incompleteOnly = document.getElementById("incompleteOnly");
 const exportBtn = document.getElementById("exportBtn");
 const importInput = document.getElementById("importInput");
 const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
 
-const incompletePlaysetsEl = document.getElementById("incompletePlaysets");
-const rarityModeToggle = document.getElementById("rarityModeToggle");
 const sidebarToggle = document.getElementById("sidebarToggle");
 
 const RARITY_LABEL_BY_PREFIX = {
@@ -339,26 +338,16 @@ function filteredCards() {
   const set = setFilter.value;
   const selected = selectedRarities();
   const requireOwned = ownedOnly.checked;
+  const requireIncomplete = incompleteOnly.checked;
 
   return cards.filter((card) => {
     if (set && card.setCode !== set) return false;
     if (selected.size > 0 && !selected.has(card.rarity)) return false;
     if (requireOwned && ownedFor(card.code) === 0) return false;
+    if (requireIncomplete && ownedFor(card.code) >= 3) return false;
     if (!text) return true;
     return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
   });
-}
-
-function renderPlaysetTracker() {
-  let incompletePlaysets = 0;
-  const summaryCards = cards.filter((card) => (rarityModeToggle.checked ? card.rarity !== "Base" : card.rarity === "Base"));
-
-  summaryCards.forEach((card) => {
-    const qty = ownedFor(card.code);
-    if (qty < 3) incompletePlaysets++;
-  });
-
-  incompletePlaysetsEl.textContent = String(incompletePlaysets);
 }
 
 function updateSidebarState() {
@@ -472,14 +461,14 @@ function createRow(card) {
     const next = ownedFor(card.code) - 1;
     setOwned(card.code, next);
     qtyEl.textContent = String(ownedFor(card.code));
-    renderPlaysetTracker();
+    renderTable();
   });
 
   fragment.querySelector(".inc").addEventListener("click", () => {
     const next = ownedFor(card.code) + 1;
     setOwned(card.code, next);
     qtyEl.textContent = String(ownedFor(card.code));
-    renderPlaysetTracker();
+    renderTable();
   });
 
   return tr;
@@ -518,7 +507,6 @@ function importCollection(file) {
       }
       collection = parsed.data;
       saveCollection();
-      renderPlaysetTracker();
       renderTable();
       alert("Collection import complete.");
     } catch {
@@ -582,7 +570,7 @@ function bindEvents() {
   searchInput.addEventListener("input", renderTable);
   setFilter.addEventListener("change", renderTable);
   ownedOnly.addEventListener("change", renderTable);
-  rarityModeToggle.addEventListener("change", renderPlaysetTracker);
+  incompleteOnly.addEventListener("change", renderTable);
   sidebarToggle.addEventListener("click", () => {
     document.body.classList.toggle("sidebar-hidden");
     updateSidebarState();
@@ -605,7 +593,6 @@ async function start() {
     await loadCards();
     populateSetFilter();
     populateRarityFilter();
-    renderPlaysetTracker();
     renderTable();
     if (rarityOutliers.length) {
       console.warn("Rarity outliers detected and left uncategorized:", rarityOutliers);
