@@ -207,6 +207,25 @@ body.sidebar-hidden .layout {
   font-size: 0.95rem;
 }
 
+.rarity-group {
+  max-height: 9rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f8fcfa;
+  padding: 0.35rem 0.45rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.rarity-option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+  color: var(--deep);
+}
+
 .checkbox {
   display: flex;
   align-items: center;
@@ -250,13 +269,13 @@ thead {
 
 tbody {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(var(--thumb-w) + 12px), 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
   align-items: start;
 }
 
 tbody tr {
-  display: block;
+  display: grid;
   border: 1px solid #e3efea;
   border-radius: 10px;
   background: #f8fcfa;
@@ -303,15 +322,18 @@ table td:nth-child(6) {
 }
 
 .card-art-cell {
-  width: calc(var(--thumb-w) + 12px);
+  width: 100%;
   padding: 0.25rem;
-  position: relative;
   margin: 0 auto;
 }
 
 .card-art {
-  width: var(--thumb-w);
-  height: var(--thumb-h);
+  width: 100%;
+  max-width: var(--thumb-w);
+  aspect-ratio: 104 / 144;
+  height: auto;
+  display: block;
+  margin: 0 auto;
   object-fit: cover;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -327,8 +349,11 @@ table td:nth-child(6) {
   position: fixed;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%) scale(5);
-  z-index: 1000;
+  transform: translate(-50%, -50%);
+  width: min(78vw, 320px);
+  max-width: 78vw;
+  max-height: 78vh;
+  z-index: 1200;
   cursor: zoom-out;
 }
 
@@ -345,9 +370,9 @@ body.zoom-active::before {
   position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 1100;
-  width: 2.2rem;
-  height: 2.2rem;
+  z-index: 1300;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 999px;
   border: 1px solid #d2e6df;
   background: rgba(255, 255, 255, 0.96);
@@ -358,11 +383,11 @@ body.zoom-active::before {
 }
 
 .zoom-nav-left {
-  left: calc(50% - 330px);
+  left: 0.5rem;
 }
 
 .zoom-nav-right {
-  left: calc(50% + 290px);
+  right: 0.5rem;
 }
 
 body.zoom-active .zoom-nav {
@@ -374,31 +399,24 @@ body.zoom-active .zoom-nav {
   opacity: 0.35 !important;
 }
 
-.owned-overlay {
-  position: absolute;
-  left: 0.75rem;
-  top: 0.75rem;
-  width: calc(var(--thumb-w) - 20px);
-  height: calc(var(--thumb-h) - 12px);
+.owned-controls {
+  margin-top: 0.25rem;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  pointer-events: none;
-  z-index: 2;
+  gap: 0.4rem;
 }
 
 .qty-btn {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.55rem;
+  height: 1.55rem;
   padding: 0;
-  margin: 0 0.2rem;
+  margin: 0;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.92);
   color: var(--accent);
-  pointer-events: auto;
 }
 
 .qty-value {
@@ -452,6 +470,10 @@ body.zoom-active .zoom-nav {
 
   .filters {
     grid-template-columns: 1fr;
+  }
+
+  tbody {
+    gap: 0.3rem;
   }
 
   .table-wrap {
