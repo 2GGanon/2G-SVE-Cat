@@ -9,8 +9,8 @@
   --border: #2a3d67;
   --deep: #d3e0ff;
   --shadow: 0 10px 26px rgba(4, 8, 20, 0.45);
-  --thumb-w: 92px;
-  --thumb-h: 128px;
+  --thumb-w: 84px;
+  --thumb-h: 116px;
 }
 
 * {
@@ -253,7 +253,7 @@ thead {
 
 tbody {
   display: grid;
-  grid-template-columns: repeat(3, minmax(calc(var(--thumb-w) + 36px), 1fr));
+  grid-template-columns: repeat(3, minmax(calc(var(--thumb-w) + 28px), 1fr));
   gap: 0.45rem;
   align-items: start;
   justify-items: center;
@@ -266,7 +266,7 @@ tbody tr {
   background: #0e1628;
   padding: 0.35rem;
   width: 100%;
-  max-width: calc(var(--thumb-w) + 28px);
+  max-width: calc(var(--thumb-w) + 24px);
   justify-items: center;
 }
 
@@ -310,7 +310,7 @@ table td:nth-child(6) {
 }
 
 .card-art-cell {
-  width: calc(var(--thumb-w) + 16px);
+  width: calc(var(--thumb-w) + 12px);
   padding: 0.25rem;
   display: grid;
   justify-items: center;
@@ -469,7 +469,7 @@ body.zoom-active .zoom-nav {
 
   tbody {
     gap: 0.3rem;
-    grid-template-columns: repeat(3, minmax(calc(var(--thumb-w) + 34px), 1fr));
+    grid-template-columns: repeat(3, minmax(calc(var(--thumb-w) + 26px), 1fr));
   }
 
   .table-wrap {
