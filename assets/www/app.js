@@ -71,6 +71,7 @@ const setFilter = document.getElementById("setFilter");
 const rarityFilterGroup = document.getElementById("rarityFilterGroup");
 const ownedOnly = document.getElementById("ownedOnly");
 const incompleteOnly = document.getElementById("incompleteOnly");
+const extraOnly = document.getElementById("extraOnly");
 const exportBtn = document.getElementById("exportBtn");
 const importBtn = document.getElementById("importBtn");
 const importInput = document.getElementById("importInput");
@@ -327,13 +328,13 @@ function loadCollection() {
 }
 
 function ownedFor(code) {
-  const value = Number(collection[code] ?? 0);
+  const value = Number.parseInt(String(collection[code] ?? 0), 10);
   if (Number.isNaN(value)) return 0;
-  return Math.max(0, Math.min(3, value));
+  return Math.max(0, value);
 }
 
 function setOwned(code, value) {
-  const next = Math.max(0, Math.min(3, value));
+  const next = Math.max(0, Math.trunc(value));
   collection[code] = next;
   saveCollection();
 }
@@ -391,12 +392,15 @@ function filteredCards() {
   const selected = selectedRarities();
   const requireOwned = ownedOnly.checked;
   const requireIncomplete = incompleteOnly.checked;
+  const requireExtra = extraOnly.checked;
 
   return cards.filter((card) => {
+    const qty = ownedFor(card.code);
     if (set && card.setCode !== set) return false;
     if (selected.size > 0 && !selected.has(card.rarity)) return false;
-    if (requireOwned && ownedFor(card.code) === 0) return false;
-    if (requireIncomplete && ownedFor(card.code) >= 3) return false;
+    if (requireOwned && qty === 0) return false;
+    if (requireIncomplete && qty >= 3) return false;
+    if (requireExtra && qty < 4) return false;
     if (!text) return true;
     return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
   });
@@ -713,6 +717,7 @@ function bindEvents() {
   setFilter.addEventListener("change", renderTable);
   ownedOnly.addEventListener("change", renderTable);
   incompleteOnly.addEventListener("change", renderTable);
+  extraOnly.addEventListener("change", renderTable);
   sidebarToggle.addEventListener("click", () => {
     document.body.classList.toggle("sidebar-hidden");
     updateSidebarState();
