@@ -212,6 +212,7 @@ body.sidebar-hidden .layout {
 
 .filter-toggles {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.85rem;
   align-items: center;
 }
