@@ -46,6 +46,44 @@ body {
   line-height: 1.1;
 }
 
+.header-left {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.legal-wrap {
+  display: grid;
+  gap: 0.35rem;
+  max-width: min(70vw, 780px);
+}
+
+.legal-toggle {
+  justify-self: start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  background: rgba(17, 26, 45, 0.75);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.legal-text {
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(10, 18, 36, 0.88);
+  color: #d7e3ff;
+  font-size: 0.73rem;
+  line-height: 1.35;
+}
+
+.hidden {
+  display: none;
+}
+
 .header-art {
   width: 78px;
   height: 78px;

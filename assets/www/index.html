@@ -10,10 +10,16 @@
   </head>
   <body>
     <header class="app-header">
-      <div>
-        <h1><span>Shadowverse: Evolve</span><span>Collection Tracker</span></h1>
+      <div class="header-left">
+        <h1><span>GG Catalogue:</span><span>Unofficial SVE Catalogue</span></h1>
+        <div class="legal-wrap">
+          <button id="legalToggle" class="legal-toggle" type="button" aria-expanded="false">Legal Notice</button>
+          <p id="legalText" class="legal-text hidden">
+            The literal and graphical information presented in this app regarding the Shadowverse Evolve trading card game, including card images and text, is copyright Cygames, Inc and Bushiroad, Inc. This app is not produced by, endorsed by, supported by, or affiliated with Cygames, Inc or Bushiroad, Inc.
+          </p>
+        </div>
       </div>
-      <img class="header-art" src="./assets/2G.webp" alt="2G icon" />
+      <img class="header-art" src="./assets/2G.avif" alt="2G icon" />
     </header>
 
     <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle search sidebar">&#128269;</button>
@@ -98,4 +104,5 @@
     <script src="./app.js"></script>
   </body>
 </html>
+
 
