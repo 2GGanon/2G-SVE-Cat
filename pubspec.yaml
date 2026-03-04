@@ -22,4 +22,5 @@ flutter:
   assets:
     - assets/www/
     - assets/www/assets/
+    - assets/www/assets/cards/
     - assets/www/data/
