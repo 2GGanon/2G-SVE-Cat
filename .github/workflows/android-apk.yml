@@ -128,7 +128,29 @@ jobs:
             exit 1
           fi
           mkdir -p android
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/release-keystore.jks
+          export ANDROID_KEYSTORE_BASE64
+          python - <<'PY'
+          import base64
+          import os
+          import pathlib
+          import re
+          import sys
+
+          raw = os.environ.get("ANDROID_KEYSTORE_BASE64", "")
+          clean = re.sub(r"\s+", "", raw)
+          if not clean:
+            print("ANDROID_KEYSTORE_BASE64 is empty after whitespace cleanup.")
+            sys.exit(1)
+          try:
+            decoded = base64.b64decode(clean, validate=True)
+          except Exception as exc:
+            print(f"Invalid ANDROID_KEYSTORE_BASE64: {exc}")
+            sys.exit(1)
+
+          out = pathlib.Path("android/release-keystore.jks")
+          out.write_bytes(decoded)
+          print(f"Wrote keystore bytes: {len(decoded)}")
+          PY
 
       - name: Sign release APK (stable update key)
         env:
