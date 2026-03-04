@@ -178,13 +178,17 @@ jobs:
           import zipfile
           apk = "build/app/outputs/flutter-apk/app-release-signed.apk"
           with zipfile.ZipFile(apk, "r") as z:
+              names = z.namelist()
               count = sum(
                   1
-                  for n in z.namelist()
-                  if n.startswith("assets/flutter_assets/assets/www/assets/cards/")
+                  for n in names
+                  if "/assets/www/assets/cards/" in n.replace("\\", "/")
               )
           print(f"APK bundled art file count: {count}")
           if count == 0:
+              print("Sample APK entries:")
+              for n in names[:200]:
+                  print(n)
               raise SystemExit("ERROR: APK has no bundled card art.")
           PY
 
