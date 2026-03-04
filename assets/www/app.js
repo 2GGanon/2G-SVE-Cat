@@ -3,7 +3,7 @@ const CARD_TYPE_URL = "./data/shadowverse-cardtype-cache.json";
 const EMBEDDED_CSV_DATA = typeof window !== "undefined" ? window.SVE_CSV_DATA : null;
 const EMBEDDED_CARDTYPE_DATA = typeof window !== "undefined" ? window.SVE_CARDTYPE_DATA : null;
 const STORAGE_KEY = "sve_collection_v1";
-const CARD_ART_BASE = "https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist";
+const CARD_ART_ROOT = "./assets/cards";
 
 const SET_NAME_BY_CODE = {
   BP01: "Advent of Genesis",
@@ -77,6 +77,8 @@ const importBtn = document.getElementById("importBtn");
 const importInput = document.getElementById("importInput");
 const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
+const legalToggle = document.getElementById("legalToggle");
+const legalText = document.getElementById("legalText");
 
 const sidebarToggle = document.getElementById("sidebarToggle");
 
@@ -234,15 +236,12 @@ function parseRarityFromCardCode(cardCode) {
 }
 
 function artUrlCandidates(card) {
-  if (card.artUrl) {
-    return [card.artUrl];
-  }
   const folders = new Set(setCodeFolderCandidates(card.setCode));
-  // Official site stores many promo/special codes under PR folder.
+  // Many promo/special codes are stored under PR folder.
   folders.add("PR");
   const urls = [];
   for (const folder of folders) {
-    urls.push(`${CARD_ART_BASE}/${folder}/${card.code}.png`);
+    urls.push(`${CARD_ART_ROOT}/${folder}/${card.code}.avif`);
   }
   return urls;
 }
@@ -410,6 +409,12 @@ function updateSidebarState() {
   const hidden = document.body.classList.contains("sidebar-hidden");
   sidebarToggle.setAttribute("aria-expanded", String(!hidden));
   sidebarToggle.title = hidden ? "Show filters" : "Hide filters";
+}
+
+function updateLegalState(expanded) {
+  if (!legalToggle || !legalText) return;
+  legalToggle.setAttribute("aria-expanded", String(expanded));
+  legalText.classList.toggle("hidden", !expanded);
 }
 
 function updateZoomNavState() {
@@ -718,6 +723,12 @@ function bindEvents() {
   ownedOnly.addEventListener("change", renderTable);
   incompleteOnly.addEventListener("change", renderTable);
   extraOnly.addEventListener("change", renderTable);
+  if (legalToggle && legalText) {
+    legalToggle.addEventListener("click", () => {
+      const expanded = legalToggle.getAttribute("aria-expanded") === "true";
+      updateLegalState(!expanded);
+    });
+  }
   sidebarToggle.addEventListener("click", () => {
     document.body.classList.toggle("sidebar-hidden");
     updateSidebarState();
@@ -739,6 +750,7 @@ async function start() {
   loadCollection();
   createZoomNav();
   bindEvents();
+  updateLegalState(false);
   updateSidebarState();
   registerServiceWorker();
   try {
@@ -755,5 +767,9 @@ async function start() {
 }
 
 start();
+
+
+
+
 
 
