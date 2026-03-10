@@ -4,6 +4,447 @@ const EMBEDDED_CSV_DATA = typeof window !== "undefined" ? window.SVE_CSV_DATA : 
 const EMBEDDED_CARDTYPE_DATA = typeof window !== "undefined" ? window.SVE_CARDTYPE_DATA : null;
 const STORAGE_KEY = "sve_collection_v1";
 const CARD_ART_ROOT = "./assets/cards";
+const PROMO_MERGED_SET_CODES = new Set(["PR", "BSF2024", "BSF2025", "NY2024"]);
+const PROMO_FRONT_ORDER = { BSF2024: 0, BSF2025: 1, NY2024: 2 };
+const DUAL_SIDE_GROUPS = [
+  ["BP08-003EN", "BP08-003_URAEN"],
+  ["BP08-SL03EN", "BP08-SL03_URAEN"],
+  ["BP09-SL20EN", "BP09-SL20EN_URA"],
+  ["BP09-SL05EN", "BP09-SL05EN_URA"],
+  ["BP09-P41EN", "BP09-P41EN_URA"],
+  ["BP09-P24EN", "BP09-P24EN_URA"],
+  ["BP09-P02EN", "BP09-P02EN_URA"],
+  ["BP09-110EN", "BP09-110EN_URA"],
+  ["BP09-090EN", "BP09-090EN_URA"],
+  ["BP09-069EN", "BP09-069EN_URA"],
+  ["BP09-042EN", "BP09-042EN_URA"],
+  ["BP09-019EN", "BP09-019EN_URA"],
+  ["BP09-005EN", "BP09-005EN_URA"],
+  ["BP09-P12EN", "BP09-P12EN_URA"],
+];
+const ONE_COPY_SET_CODES = new Set(["GFB01A", "GFB01B", "GFB01C", "GFB01D", "GFD01", "GFD02"]);
+const MISSING_FRONT_CARD_OVERRIDES = [
+  { code: "BP08-SL03EN", name: "Orchis, Resolute Puppet", isEvolved: true },
+  { code: "BP09-SL20EN", name: "Vania, Kind Queen", isEvolved: false },
+  { code: "BP09-SL05EN", name: "Celia, Hope's Strategist", isEvolved: false },
+  { code: "BP09-P41EN", name: "Ceryneian Lighthind", isEvolved: false },
+  { code: "BP09-P24EN", name: "Virtuous Lindworm", isEvolved: false },
+  { code: "BP09-P02EN", name: "Paula, Gentle Warmth", isEvolved: false },
+  { code: "BP09-110EN", name: "Ceryneian Lighthind", isEvolved: false },
+  { code: "BP09-090EN", name: "Vania, Kind Queen", isEvolved: false },
+  { code: "BP09-069EN", name: "Virtuous Lindworm", isEvolved: false },
+  { code: "BP09-042EN", name: "Mysterian Whitewyrm", isEvolved: false },
+  { code: "BP09-019EN", name: "Celia, Hope's Strategist", isEvolved: false },
+  { code: "BP09-005EN", name: "Paula, Gentle Warmth", isEvolved: false },
+  { code: "BP09-P12EN", name: "Mysterian Whitewyrm", isEvolved: false },
+];
+const PR_PROMO_SOURCE_RULES = [
+  [0, 0, "Launch Demo Caravan"],
+  [1, 6, "BP01 Box Topper"],
+  [7, 12, "Promo Series 1"],
+  [13, 13, "Showdown Series July-Sept 2023 Participation"],
+  [14, 14, "Showdown Series July-Sept 2023 Top 8"],
+  [15, 15, "Showdown Series July-Sept 2023 Champion"],
+  [16, 16, "Promo Series 2"],
+  [17, 17, "Bushiroad Championship Series 2023 Regional Participation"],
+  [18, 18, "Bushiroad Championship Series 2023 Regional Free Fight"],
+  [19, 19, "Bushiroad Championship Series 2023 Regional Top 8"],
+  [20, 20, "Bushiroad Championship Series 2024 Participation"],
+  [21, 26, "Promo Series 3"],
+  [27, 33, "Promo Series 2"],
+  [34, 34, "Showdown Series Oct-Dec 2023 Participation"],
+  [35, 35, "Showdown Series Oct-Dec 2023 Top 8"],
+  [36, 36, "Showdown Series Oct-Dec 2023 Champion"],
+  [37, 37, "Judge Promo Foil 2024"],
+  [38, 39, "Worlds 2024 Participation"],
+  [40, 40, "Bushiroad Spring Fest Shop Challenge 2024 Champion"],
+  [41, 41, "BP03 Box Topper"],
+  [42, 42, "Showdown Series Jan-March 2024 Participation"],
+  [43, 43, "Showdown Series Jan-March 2024 Top 8"],
+  [44, 44, "Showdown Series Jan-March 2024 Champion"],
+  [45, 53, "Promo Series 4"],
+  [54, 54, "Shop Tournament Feb-March 2024 Champion and Raffle"],
+  [55, 55, "Bushiroad Summer Fest 2024 Shop Challenge Participation"],
+  [56, 56, "Bushiroad Summer Fest 2024 Shop Challenge Top 3"],
+  [57, 63, "Bushiroad Summer Fest 2024 Participation"],
+  [64, 72, "Promo Series 5"],
+  [73, 73, "Shop Tournament April-May 2024 Champion and Raffle"],
+  [74, 74, "Showdown Series April-June 2024 Participation"],
+  [75, 75, "Showdown Series April-June 2024 Top 8"],
+  [76, 76, "Showdown Series April-June 2024 Champion"],
+  [77, 82, "2024 Conventions (BushiroadExpo LA, London, Japan Expo, etc.)"],
+  [83, 94, "BP05 Box Topper"],
+  [95, 104, "Promo Series 6"],
+  [105, 106, "Shop Tournament June-July 2024 Champion"],
+  [107, 107, "Showdown Series 1 Participation"],
+  [108, 108, "Showdown Series 1 Top 8"],
+  [109, 109, "Showdown Series 1 Champion"],
+  [110, 119, "Promo Series 7"],
+  [120, 120, "Shop Tournament Aug-Sept 2024 Champion"],
+  [121, 121, "BP06 Release Tournament Champion"],
+  [122, 122, "Grand Showdown Series Participation"],
+  [123, 123, "Grand Showdown Series Top 32 Singapore"],
+  [124, 124, "Grand Showdown Series Top 32 Los Angeles"],
+  [125, 125, "Grand Showdown Series Top 32 Someren"],
+  [126, 126, "Grand Showdown Series Top 8 Singapore"],
+  [127, 127, "Grand Showdown Series Top 8 Los Angeles"],
+  [128, 128, "Grand Showdown Series Top 8 Someren"],
+  [129, 134, "Bushiroad Championship Series 2024-2025 Regional Participation"],
+  [135, 135, "Bushiroad Championship Series 2024-2025 Regional Top 4"],
+  [136, 136, "Bushiroad Championship Series 2024-2025 Regional Champion"],
+  [137, 137, "Gloryfinder Trials"],
+  [138, 138, "Gloryfinder Clash Season 1 and Guide to Glory"],
+  [139, 139, "Judge Promo 2024-2025"],
+  [140, 140, "Judge Promo Foil 2024-2025"],
+  [141, 152, "Promo Series 9"],
+  [153, 153, "Shop Tournament Dec-Jan 2024-2025 Champion"],
+  [154, 154, "IM@S Release Tournament Champion"],
+  [155, 164, "Promo Series 8"],
+  [165, 165, "Shop Tournament Oct-Nov 2024 Champion"],
+  [166, 166, "Showdown Series 2 Participation"],
+  [167, 167, "Showdown Series 2 Top 8"],
+  [168, 168, "Showdown Series 2 Champion"],
+  [169, 169, "Gloryfinder Clash Season 2 Participation"],
+  [170, 172, "BP07 Release Tournament Participation"],
+  [173, 173, "BP07 Release Tournament Champion"],
+  [174, 174, "Gloryfinder Clash Season 3 Participation"],
+  [175, 175, "Showdown Series 3 Participation"],
+  [176, 176, "Showdown Series 3 Top 8"],
+  [177, 177, "Showdown Series 3 Champion"],
+  [178, 185, "Promo Series 10"],
+  [186, 186, "Promo Series 10 and 10 Add-on"],
+  [187, 187, "Shop Tournament Feb-March 2025 Champion"],
+  [188, 188, "BP08 Release Tournament Participation"],
+  [189, 189, "BP08 Release Tournament Champion"],
+  [190, 200, "BP08 Box Topper"],
+  [201, 201, "Lunar New Year 2025 Participation"],
+  [202, 202, "Worlds 2024-2025 Participation"],
+  [203, 203, "Worlds 2024-2025 Top 8"],
+  [204, 204, "Worlds 2024-2025 Top 4"],
+  [205, 210, "Bushiroad Summer Fest 2025 Participation"],
+  [211, 211, "Bushiroad Summer Fest 2025 Top 8"],
+  [212, 220, "Grand Showdown Series 4 Gloryfinder Side Event"],
+  [221, 221, "Gloryfinder Clash Season 4 Participation"],
+  [222, 222, "BP09 Release Tournament Participation"],
+  [223, 223, "BP09 Release Tournament Champion"],
+  [224, 226, "2025 Conventions (AnimeExpo)"],
+  [227, 232, "Promo Series 10 Add-on"],
+  [233, 233, "Showdown Series 4 Participation"],
+  [234, 234, "Showdown Series 4 Top 8"],
+  [235, 235, "Showdown Series 4 Champion"],
+  [236, 243, "Promo Series 11"],
+  [244, 244, "Shop Tournament April-May 2025 Champion"],
+  [245, 245, "AnimeExpo"],
+  [246, 246, "GenCon"],
+  [247, 256, "Promo Series 12"],
+  [257, 257, "Shop Tournament June-July 2025 Champion"],
+  [258, 258, "BP10 Release Tournament Champion"],
+  [259, 259, "Vanguard Release Tournament Champion"],
+  [260, 260, "Showdown Series 5 Participation"],
+  [261, 261, "Showdown Series 5 Top 8"],
+  [262, 262, "Showdown Series 5 Champion"],
+  [263, 263, "Showdown Series 6 Participation"],
+  [264, 264, "Showdown Series 6 Top 8"],
+  [265, 265, "Showdown Series 6 Champion"],
+  [266, 266, "Grand Showdown Series 5 Participation"],
+  [267, 267, "Grand Showdown Series 5 Top 32"],
+  [268, 268, "Grand Showdown Series 5 Top 16"],
+  [269, 269, "Grand Showdown Series 5 Top 8"],
+  [270, 270, "Grand Showdown Series 5 Sealed Participation and Champion"],
+  [271, 280, "Promo Series 13"],
+  [281, 281, "Shop Tournament Oct-Nov 2025 Champion and Raffle"],
+  [282, 282, "BP11 Release Tournament Champion"],
+  [283, 283, "Judge Promo 2025-2026"],
+  [284, 285, "Judge Promo Foil 2025-2026"],
+  [286, 297, "Bushiroad Championship Series 2025-2026 Regional Participation"],
+  [298, 298, "Bushiroad Championship Series 2025-2026 Regional Top Cut"],
+  [299, 299, "Bushiroad Championship Series 2025-2026 Regional Top 4"],
+  [300, 300, "Bushiroad Championship Series 2025-2026 Regional Champion"],
+  [301, 316, "Bushiroad Championship 2025-2026 Series Regional Crosscraft Participation"],
+  [317, 317, "Bushiroad Championship Series Regional 2025-2026 Gloryfinder Participation"],
+  [318, 337, "Bushiroad Championship Series Regional 2025-2026 and Grand Showdown Series 6 Single Elimination Participation and Champion"],
+  [338, 338, "2025 Shop Tournament Redemption Campaign"],
+  [339, 340, "Grand Showdown Series 6 Participation"],
+  [341, 341, "Grand Showdown Series 6 Top 32"],
+  [342, 342, "Grand Showdown Series 6 Top 16"],
+  [343, 343, "Grand Showdown Series 6 Top 8 and Champion"],
+  [344, 344, "Grand Showdown Series 6 Sealed Participation and Champion"],
+  [345, 345, "Grand Showdown Series 6 Gloryfinder Participation"],
+  [346, 346, "Lunar New Year 2026 Participation"],
+  [347, 358, "Promo Series 14"],
+  [359, 359, "Shop Tournament Dec 2025 Champion"],
+  [360, 360, "Shop Tournament Jan 2026 Champion"],
+  [361, 362, "BP12 Release Tournament Champion"],
+  [363, 363, "BP13 Release Tournament Champion"],
+  [364, 364, "Showdown Series 7 Participation"],
+  [365, 365, "Showdown Series 7 Top 8"],
+  [366, 366, "Showdown Series 7 Champion"],
+  [367, 367, "EX Umamusume Release Tournament Champion"],
+  [368, 368, "EX Umamusume Serial Tournament Champion"],
+  [369, 369, "Valentine's Day Duos 2025 Participation"],
+  [370, 381, "Promo Series 15"],
+  [382, 382, "Shop Tournament Feb 2026 Champion"],
+  [383, 384, "Shop Tournament March 2026 Champion"],
+  [385, 385, "Worlds 2025-2026 Participation"],
+  [386, 386, "BP14 Release Tournament Champion"],
+  [387, 387, "BP15 Release Tournament Champion"],
+];
+const STARTER_DECK_PLAYSET_LIMIT_BY_CODE = {
+  "SD01-LD01EN": 1,
+  "SD01-001EN": 3,
+  "SD01-002EN": 3,
+  "SD01-003EN": 3,
+  "SD01-004EN": 3,
+  "SD01-005EN": 3,
+  "SD01-006EN": 3,
+  "SD01-007EN": 2,
+  "SD01-008EN": 2,
+  "SD01-009EN": 3,
+  "SD01-010EN": 3,
+  "SD01-011EN": 3,
+  "SD01-012EN": 3,
+  "SD01-013EN": 3,
+  "SD01-014EN": 2,
+  "SD01-015EN": 2,
+  "SD01-016EN": 3,
+  "SD01-017EN": 2,
+  "SD01-018EN": 1,
+  "SD01-019EN": 2,
+  "SD01-020EN": 1,
+  "SD01-T01EN": 1,
+  "SD02-LD01EN": 1,
+  "SD02-001EN": 3,
+  "SD02-002EN": 3,
+  "SD02-003EN": 3,
+  "SD02-004EN": 3,
+  "SD02-005EN": 3,
+  "SD02-006EN": 3,
+  "SD02-007EN": 2,
+  "SD02-008EN": 2,
+  "SD02-009EN": 3,
+  "SD02-010EN": 3,
+  "SD02-011EN": 3,
+  "SD02-012EN": 3,
+  "SD02-013EN": 3,
+  "SD02-014EN": 2,
+  "SD02-015EN": 2,
+  "SD02-016EN": 3,
+  "SD02-017EN": 2,
+  "SD02-018EN": 1,
+  "SD02-019EN": 1,
+  "SD02-020EN": 2,
+  "SD03-LD01EN": 1,
+  "SD03-001EN": 3,
+  "SD03-002EN": 3,
+  "SD03-003EN": 3,
+  "SD03-004EN": 3,
+  "SD03-005EN": 3,
+  "SD03-006EN": 3,
+  "SD03-007EN": 2,
+  "SD03-008EN": 3,
+  "SD03-009EN": 3,
+  "SD03-010EN": 3,
+  "SD03-011EN": 3,
+  "SD03-012EN": 2,
+  "SD03-013EN": 2,
+  "SD03-014EN": 2,
+  "SD03-015EN": 3,
+  "SD03-016EN": 3,
+  "SD03-017EN": 2,
+  "SD03-018EN": 1,
+  "SD03-019EN": 1,
+  "SD03-020EN": 2,
+  "SD04-LD01EN": 1,
+  "SD04-001EN": 3,
+  "SD04-002EN": 3,
+  "SD04-003EN": 3,
+  "SD04-004EN": 3,
+  "SD04-005EN": 3,
+  "SD04-006EN": 3,
+  "SD04-007EN": 2,
+  "SD04-008EN": 2,
+  "SD04-009EN": 3,
+  "SD04-010EN": 3,
+  "SD04-011EN": 3,
+  "SD04-012EN": 3,
+  "SD04-013EN": 3,
+  "SD04-014EN": 3,
+  "SD04-015EN": 2,
+  "SD04-016EN": 2,
+  "SD04-017EN": 2,
+  "SD04-018EN": 1,
+  "SD04-019EN": 1,
+  "SD04-020EN": 2,
+  "SD05-LD01EN": 1,
+  "SD05-001EN": 3,
+  "SD05-002EN": 3,
+  "SD05-003EN": 3,
+  "SD05-004EN": 3,
+  "SD05-005EN": 3,
+  "SD05-006EN": 3,
+  "SD05-007EN": 2,
+  "SD05-008EN": 2,
+  "SD05-009EN": 2,
+  "SD05-010EN": 3,
+  "SD05-011EN": 3,
+  "SD05-012EN": 3,
+  "SD05-013EN": 3,
+  "SD05-014EN": 2,
+  "SD05-015EN": 3,
+  "SD05-016EN": 3,
+  "SD05-017EN": 2,
+  "SD05-018EN": 2,
+  "SD05-019EN": 1,
+  "SD05-020EN": 1,
+  "SD06-LD01EN": 1,
+  "SD06-001EN": 3,
+  "SD06-002EN": 3,
+  "SD06-003EN": 3,
+  "SD06-004EN": 3,
+  "SD06-005EN": 3,
+  "SD06-006EN": 3,
+  "SD06-007EN": 2,
+  "SD06-008EN": 2,
+  "SD06-009EN": 3,
+  "SD06-010EN": 3,
+  "SD06-011EN": 3,
+  "SD06-012EN": 3,
+  "SD06-013EN": 2,
+  "SD06-014EN": 2,
+  "SD06-015EN": 3,
+  "SD06-016EN": 3,
+  "SD06-017EN": 1,
+  "SD06-018EN": 2,
+  "SD06-019EN": 1,
+  "SD06-020EN": 2,
+  "CSD01-LD01EN": 1,
+  "CSD01-001EN": 1,
+  "CSD01-002EN": 1,
+  "CSD01-003EN": 1,
+  "CSD01-004EN": 1,
+  "CSD01-005EN": 1,
+  "CSD01-006EN": 1,
+  "CSD01-007EN": 3,
+  "CSD01-008EN": 1,
+  "CSD01-009EN": 1,
+  "CSD01-010EN": 1,
+  "CSD01-011EN": 1,
+  "CSD01-012EN": 1,
+  "CSD01-013EN": 1,
+  "CSD01-014EN": 1,
+  "CSD01-015EN": 2,
+  "CSD01-016EN": 1,
+  "CSD01-017EN": 2,
+  "CSD01-018EN": 1,
+  "CSD01-019EN": 2,
+  "CSD01-020EN": 1,
+  "CSD01-021EN": 1,
+  "CSD01-022EN": 2,
+  "CSD01-023EN": 1,
+  "CSD01-024EN": 2,
+  "CSD01-025EN": 1,
+  "CSD01-026EN": 1,
+  "CSD01-027EN": 1,
+  "CSD01-028EN": 1,
+  "CSD01-029EN": 2,
+  "CSD01-030EN": 3,
+  "CSD01-031EN": 3,
+  "CSD01-032EN": 7,
+  "CSD01-T01EN": 3,
+  "CSD02a-LD01EN": 1,
+  "CSD02a-001EN": 3,
+  "CSD02a-002EN": 3,
+  "CSD02a-003EN": 3,
+  "CSD02a-004EN": 3,
+  "CSD02a-005EN": 3,
+  "CSD02a-006EN": 3,
+  "CSD02a-007EN": 3,
+  "CSD02a-008EN": 3,
+  "CSD02a-009EN": 3,
+  "CSD02a-010EN": 3,
+  "CSD02a-011EN": 3,
+  "CSD02a-012EN": 1,
+  "CSD02a-013EN": 1,
+  "CSD02a-014EN": 3,
+  "CSD02a-015EN": 3,
+  "CSD02a-016EN": 3,
+  "CSD02a-017EN": 3,
+  "CSD02a-018EN": 3,
+  "CSD02b-LD01EN": 1,
+  "CSD02b-001EN": 3,
+  "CSD02b-002EN": 3,
+  "CSD02b-003EN": 3,
+  "CSD02b-004EN": 3,
+  "CSD02b-005EN": 3,
+  "CSD02b-006EN": 3,
+  "CSD02b-007EN": 3,
+  "CSD02b-008EN": 3,
+  "CSD02b-009EN": 3,
+  "CSD02b-010EN": 3,
+  "CSD02b-011EN": 3,
+  "CSD02b-012EN": 3,
+  "CSD02b-013EN": 3,
+  "CSD02b-014EN": 3,
+  "CSD02b-015EN": 3,
+  "CSD02b-016EN": 1,
+  "CSD02b-017EN": 1,
+  "CSD02b-018EN": 3,
+  "CSD02c-LD01EN": 1,
+  "CSD02c-001EN": 3,
+  "CSD02c-002EN": 3,
+  "CSD02c-003EN": 3,
+  "CSD02c-004EN": 3,
+  "CSD02c-005EN": 3,
+  "CSD02c-006EN": 3,
+  "CSD02c-007EN": 3,
+  "CSD02c-008EN": 3,
+  "CSD02c-009EN": 3,
+  "CSD02c-010EN": 3,
+  "CSD02c-011EN": 3,
+  "CSD02c-012EN": 3,
+  "CSD02c-013EN": 3,
+  "CSD02c-014EN": 1,
+  "CSD02c-015EN": 1,
+  "CSD02c-016EN": 3,
+  "CSD02c-017EN": 3,
+  "CSD02c-018EN": 3,
+  "CSD03a-LD01EN": 1,
+  "CSD03a-001EN": 3,
+  "CSD03a-002EN": 3,
+  "CSD03a-003EN": 3,
+  "CSD03a-004EN": 3,
+  "CSD03a-005EN": 3,
+  "CSD03a-006EN": 3,
+  "CSD03a-007EN": 3,
+  "CSD03a-008EN": 3,
+  "CSD03a-009EN": 3,
+  "CSD03a-010EN": 3,
+  "CSD03a-011EN": 3,
+  "CSD03a-012EN": 3,
+  "CSD03a-013EN": 3,
+  "CSD03a-014EN": 3,
+  "CSD03a-015EN": 3,
+  "CSD03a-016EN": 1,
+  "CSD03a-017EN": 4,
+  "CSD03b-LD01EN": 1,
+  "CSD03b-001EN": 3,
+  "CSD03b-002EN": 3,
+  "CSD03b-003EN": 3,
+  "CSD03b-004EN": 3,
+  "CSD03b-005EN": 3,
+  "CSD03b-006EN": 3,
+  "CSD03b-007EN": 3,
+  "CSD03b-008EN": 3,
+  "CSD03b-009EN": 3,
+  "CSD03b-010EN": 3,
+  "CSD03b-011EN": 3,
+  "CSD03b-012EN": 3,
+  "CSD03b-013EN": 3,
+  "CSD03b-014EN": 3,
+  "CSD03b-015EN": 3,
+  "CSD03b-016EN": 1,
+  "CSD03b-017EN": 4,
+};
 
 const SET_NAME_BY_CODE = {
   BP01: "Advent of Genesis",
@@ -66,6 +507,54 @@ function setLabel(setCode) {
   return name ? `${setCode}: ${name}` : setCode;
 }
 
+function normalizeCardCode(rawCode) {
+  let code = String(rawCode || "").trim();
+  try {
+    code = decodeURIComponent(code);
+  } catch {
+    // keep original if decoding fails
+  }
+  // Normalize special leader marker so art files resolve.
+  code = code.replace(/-LDⓈ(\d+EN)$/i, "-LD$1");
+  return code;
+}
+
+function canonicalSetCode(rawSetCode) {
+  const normalized = normalizeSetCodeForLookup(rawSetCode);
+  return PROMO_MERGED_SET_CODES.has(normalized) ? "PR" : String(rawSetCode || "");
+}
+
+function promoOrderIndex(cardCode) {
+  const prefix = String(cardCode || "").split("-")[0] || "";
+  return Object.hasOwn(PROMO_FRONT_ORDER, prefix) ? PROMO_FRONT_ORDER[prefix] : 99;
+}
+
+function playsetLimitForCard(card) {
+  const cardCode = normalizeCardCode(card?.code || "");
+  if (Object.hasOwn(STARTER_DECK_PLAYSET_LIMIT_BY_CODE, cardCode)) {
+    return STARTER_DECK_PLAYSET_LIMIT_BY_CODE[cardCode];
+  }
+
+  const cardName = String(card?.name || "").trim().toLowerCase();
+  if (cardName === "onion patch") return 50;
+  if (cardName === "rapid fire") return 6;
+
+  const normalizedSet = normalizeSetCodeForLookup(card?.setCode || "");
+  if (ONE_COPY_SET_CODES.has(normalizedSet)) return 1;
+
+  const rarity = String(card?.rarity || "");
+  if (rarity === "Leader" || rarity === "Token") return 1;
+
+  return 3;
+}
+
+function initDualGroups() {
+  dualGroupByCode = new Map();
+  DUAL_SIDE_GROUPS.forEach((group) => {
+    group.forEach((code) => dualGroupByCode.set(code, group));
+  });
+}
+
 const searchInput = document.getElementById("searchInput");
 const setFilter = document.getElementById("setFilter");
 const rarityFilterGroup = document.getElementById("rarityFilterGroup");
@@ -111,11 +600,36 @@ const RARITY_SORT_ORDER = [
 ];
 
 let cards = [];
+let cardByCode = new Map();
 let collection = {};
 let zoomState = { cards: [], index: -1, anchorEl: null, anchorCode: "" };
 let zoomNavLeft = null;
 let zoomNavRight = null;
+let zoomPromoInfo = null;
 let rarityOutliers = [];
+let dualGroupByCode = new Map();
+
+function prPromoSourceByCode(cardCode) {
+  const normalized = normalizeCardCode(cardCode);
+  const match = normalized.match(/^PR-(\d{3})/i);
+  if (!match) return "";
+  const number = Number.parseInt(match[1], 10);
+  if (!Number.isFinite(number)) return "";
+  const rule = PR_PROMO_SOURCE_RULES.find(([start, end]) => number >= start && number <= end);
+  return rule ? rule[2] : "";
+}
+
+function updateZoomPromoInfo(card) {
+  if (!zoomPromoInfo) return;
+  const source = prPromoSourceByCode(card?.code || "") || String(card?.promoSource || "").trim();
+  if (!source) {
+    zoomPromoInfo.classList.add("hidden");
+    zoomPromoInfo.textContent = "";
+    return;
+  }
+  zoomPromoInfo.textContent = `Promo Source: ${source}`;
+  zoomPromoInfo.classList.remove("hidden");
+}
 
 function hasNativeBridge() {
   return typeof window !== "undefined" && window.SVEBridge && typeof window.SVEBridge.postMessage === "function";
@@ -169,8 +683,10 @@ window.__sveNativeImportResult = function __sveNativeImportResult(payloadJson) {
 };
 
 function setCodeFromCardCode(cardCode) {
-  const match = (cardCode || "").match(/^([A-Za-z0-9]+)-/);
-  return match ? match[1] : "UNKNOWN";
+  const normalized = normalizeCardCode(cardCode);
+  const match = normalized.match(/^([A-Za-z0-9]+)-/);
+  if (!match) return "UNKNOWN";
+  return canonicalSetCode(match[1]);
 }
 
 function setCodeFolderCandidates(setCode) {
@@ -239,9 +755,26 @@ function artUrlCandidates(card) {
   const folders = new Set(setCodeFolderCandidates(card.setCode));
   // Many promo/special codes are stored under PR folder.
   folders.add("PR");
+  const normalizedCode = normalizeCardCode(card.code);
+  const rawCode = String(card.code || "").trim();
+  const csvArtUrl = String(card.artUrl || "").trim();
+  const originalSetCodeMatch = normalizedCode.match(/^([A-Za-z0-9]+)-/);
+  if (originalSetCodeMatch) {
+    setCodeFolderCandidates(originalSetCodeMatch[1]).forEach((f) => folders.add(f));
+  }
   const urls = [];
+  // Offline-only: accept only local/relative URLs from catalog data.
+  if (csvArtUrl && !/^https?:\/\//i.test(csvArtUrl)) {
+    urls.push(csvArtUrl);
+    urls.push(csvArtUrl.replace(/\.png(\?.*)?$/i, ".avif"));
+  }
   for (const folder of folders) {
-    urls.push(`${CARD_ART_ROOT}/${folder}/${card.code}.avif`);
+    urls.push(`${CARD_ART_ROOT}/${folder}/${rawCode}.avif`);
+    urls.push(`${CARD_ART_ROOT}/${folder}/${normalizedCode}.avif`);
+    urls.push(`${CARD_ART_ROOT}/${folder}/${rawCode}.webp`);
+    urls.push(`${CARD_ART_ROOT}/${folder}/${normalizedCode}.webp`);
+    urls.push(`${CARD_ART_ROOT}/${folder}/${rawCode}.png`);
+    urls.push(`${CARD_ART_ROOT}/${folder}/${normalizedCode}.png`);
   }
   return urls;
 }
@@ -393,16 +926,28 @@ function filteredCards() {
   const requireIncomplete = incompleteOnly.checked;
   const requireExtra = extraOnly.checked;
 
-  return cards.filter((card) => {
+  const rows = cards.filter((card) => {
     const qty = ownedFor(card.code);
+    const playsetLimit = playsetLimitForCard(card);
     if (set && card.setCode !== set) return false;
     if (selected.size > 0 && !selected.has(card.rarity)) return false;
     if (requireOwned && qty === 0) return false;
-    if (requireIncomplete && qty >= 3) return false;
-    if (requireExtra && qty < 4) return false;
+    if (requireIncomplete && qty >= playsetLimit) return false;
+    if (requireExtra && qty <= playsetLimit) return false;
     if (!text) return true;
     return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
   });
+
+  if (set === "PR") {
+    rows.sort((a, b) => {
+      const pa = promoOrderIndex(a.code);
+      const pb = promoOrderIndex(b.code);
+      if (pa !== pb) return pa - pb;
+      return a.code.localeCompare(b.code);
+    });
+  }
+
+  return rows;
 }
 
 function updateSidebarState() {
@@ -427,6 +972,10 @@ function updateZoomNavState() {
 function closeZoom() {
   document.querySelectorAll(".card-art.zoomed").forEach((el) => el.classList.remove("zoomed"));
   document.body.classList.remove("zoom-active");
+  if (zoomPromoInfo) {
+    zoomPromoInfo.classList.add("hidden");
+    zoomPromoInfo.textContent = "";
+  }
   if (zoomState.anchorEl && zoomState.anchorCode) {
     const anchorCard = cards.find((c) => c.code === zoomState.anchorCode);
     if (anchorCard) applyArtToImage(zoomState.anchorEl, anchorCard);
@@ -444,6 +993,7 @@ function setZoomedElement(nextIndex) {
   applyArtToImage(zoomState.anchorEl, zoomCard);
   zoomState.anchorEl.classList.add("zoomed");
   document.body.classList.add("zoom-active");
+  updateZoomPromoInfo(zoomCard);
   updateZoomNavState();
 }
 
@@ -480,6 +1030,30 @@ function navigateZoom(step) {
   setZoomedElement(zoomState.index + step);
 }
 
+function cardFaces(card) {
+  const group = dualGroupByCode.get(card.code);
+  if (!group || group.length < 2) return [card.code];
+  return group;
+}
+
+function resolveFaceCard(baseCard, faceCode) {
+  const byCode = cardByCode.get(faceCode);
+  if (byCode) return byCode;
+  return {
+    ...baseCard,
+    code: faceCode,
+    setCode: setCodeFromCardCode(faceCode),
+    artUrl: "",
+  };
+}
+
+function setCardFace(artEl, baseCard, faceCode) {
+  const faceCard = resolveFaceCard(baseCard, faceCode);
+  applyArtToImage(artEl, faceCard);
+  artEl.dataset.cardName = faceCard.name;
+  artEl.dataset.cardCode = faceCard.code;
+}
+
 function createZoomNav() {
   if (zoomNavLeft && zoomNavRight) return;
 
@@ -502,15 +1076,34 @@ function createZoomNav() {
   document.body.appendChild(zoomNavRight);
 }
 
+function createZoomPromoInfo() {
+  if (zoomPromoInfo) return;
+  zoomPromoInfo = document.createElement("div");
+  zoomPromoInfo.className = "zoom-promo-info hidden";
+  zoomPromoInfo.setAttribute("aria-live", "polite");
+  document.body.appendChild(zoomPromoInfo);
+}
+
 function createRow(card) {
   const fragment = rowTemplate.content.cloneNode(true);
   const tr = fragment.querySelector("tr");
   const qtyEl = fragment.querySelector(".qty-value");
   const artEl = fragment.querySelector(".card-art");
-  applyArtToImage(artEl, card);
-  artEl.dataset.cardName = card.name;
-  artEl.dataset.cardCode = card.code;
+  const dualBtn = fragment.querySelector(".dual-toggle");
+  const faces = cardFaces(card);
+  let faceIndex = 0;
+  setCardFace(artEl, card, faces[faceIndex]);
   artEl.addEventListener("click", () => openZoomFor(artEl));
+
+  if (faces.length > 1) {
+    dualBtn.classList.remove("hidden");
+    dualBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      faceIndex = (faceIndex + 1) % faces.length;
+      setCardFace(artEl, card, faces[faceIndex]);
+    });
+  }
 
   fragment.querySelector(".card-name").textContent = card.name;
   fragment.querySelector(".card-code").textContent = card.code;
@@ -691,19 +1284,80 @@ async function loadCards() {
 
   const parsed = parseCsv(csvText);
   cards = parsed.map((r) => {
-    const rarityInfo = parseRarityFromCardCode(r["Card Code"]);
+    const rawCode = r["Card Code"];
+    const rarityInfo = parseRarityFromCardCode(rawCode);
     return {
       name: r["Card Name"],
-      code: r["Card Code"],
+      code: rawCode,
       promoSource: r["Promo Obtain Source (if PR in code)"] || "",
       artUrl: r["Art URL"] || "",
-      setCode: setCodeFromCardCode(r["Card Code"]),
+      setCode: setCodeFromCardCode(rawCode),
       rarity: rarityInfo.rarity,
       rarityOutlier: rarityInfo.outlier,
       rarityOutlierReason: rarityInfo.outlierReason,
-      isEvolved: isEvolvedType(cardTypeMap[r["Card Code"]], r["Card Name"]),
+      isEvolved: isEvolvedType(cardTypeMap[rawCode], r["Card Name"]),
     };
   });
+
+  function insertMissingCardByCodeOrder(card) {
+    const compare = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+    const sameSetIndices = cards
+      .map((c, idx) => ({ c, idx }))
+      .filter((x) => x.c.setCode === card.setCode);
+    if (!sameSetIndices.length) {
+      cards.push(card);
+      return;
+    }
+    const ahead = sameSetIndices.find((x) => compare(x.c.code, card.code) > 0);
+    if (ahead) {
+      cards.splice(ahead.idx, 0, card);
+      return;
+    }
+    const last = sameSetIndices[sameSetIndices.length - 1];
+    cards.splice(last.idx + 1, 0, card);
+  }
+
+  MISSING_FRONT_CARD_OVERRIDES.forEach((entry) => {
+    if (cards.some((c) => c.code === entry.code)) return;
+    const rarityInfo = parseRarityFromCardCode(entry.code);
+    insertMissingCardByCodeOrder({
+      name: entry.name,
+      code: entry.code,
+      promoSource: "",
+      artUrl: "",
+      setCode: setCodeFromCardCode(entry.code),
+      rarity: rarityInfo.rarity,
+      rarityOutlier: rarityInfo.outlier,
+      rarityOutlierReason: rarityInfo.outlierReason,
+      isEvolved: entry.isEvolved,
+    });
+  });
+
+  // Ensure known dual-sided entries are present even when not emitted by upstream export.
+  if (!cards.some((c) => c.code === "BP08-003EN")) {
+    const rarityInfo = parseRarityFromCardCode("BP08-003EN");
+    const bp08003 = {
+      name: "Orchis, Resolute Puppet",
+      code: "BP08-003EN",
+      promoSource: "",
+      artUrl: "",
+      setCode: "BP08",
+      rarity: rarityInfo.rarity,
+      rarityOutlier: rarityInfo.outlier,
+      rarityOutlierReason: rarityInfo.outlierReason,
+      isEvolved: true,
+    };
+    const bp08002Index = cards.findIndex((c) => c.code === "BP08-002EN");
+    if (bp08002Index >= 0) {
+      cards.splice(bp08002Index + 1, 0, bp08003);
+    } else {
+      cards.push(bp08003);
+    }
+  }
+
+  initDualGroups();
+  cardByCode = new Map(cards.map((card) => [card.code, card]));
+
   rarityOutliers = cards.filter((c) => c.rarityOutlier).map((c) => ({
     code: c.code,
     name: c.name,
@@ -714,6 +1368,14 @@ async function loadCards() {
 function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+}
+
+function triggerHapticFeedback() {
+  try {
+    if (navigator.vibrate) navigator.vibrate(8);
+  } catch {
+    // Ignore unsupported platforms.
   }
 }
 
@@ -744,11 +1406,21 @@ function bindEvents() {
     if (file) importCollection(file);
     importInput.value = "";
   });
+  document.body.addEventListener(
+    "pointerdown",
+    (ev) => {
+      if (ev.target instanceof Element && ev.target.closest("button")) {
+        triggerHapticFeedback();
+      }
+    },
+    { passive: true }
+  );
 }
 
 async function start() {
   loadCollection();
   createZoomNav();
+  createZoomPromoInfo();
   bindEvents();
   updateLegalState(false);
   updateSidebarState();

@@ -36,6 +36,37 @@ jobs:
       - name: Generate Android platform files
         run: flutter create --platforms=android --org "$APP_ORG" .
 
+      - name: Use header icon as Android app icon
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          src = Path("assets/www/assets/2G.avif")
+          if not src.exists():
+            raise SystemExit("Missing icon source: assets/www/assets/2G.avif")
+
+          with Image.open(src) as im:
+            if im.mode not in ("RGB", "RGBA"):
+              im = im.convert("RGBA")
+            # Preserve transparency and fit icon into Android launcher sizes.
+            sizes = {
+              "mipmap-mdpi": 48,
+              "mipmap-hdpi": 72,
+              "mipmap-xhdpi": 96,
+              "mipmap-xxhdpi": 144,
+              "mipmap-xxxhdpi": 192,
+            }
+            for folder, size in sizes.items():
+              out_dir = Path("android/app/src/main/res") / folder
+              out_dir.mkdir(parents=True, exist_ok=True)
+              icon = im.resize((size, size), Image.Resampling.LANCZOS)
+              icon.save(out_dir / "ic_launcher.png", format="PNG")
+              icon.save(out_dir / "ic_launcher_round.png", format="PNG")
+
+          print("Generated Android launcher icons from assets/www/assets/2G.avif")
+          PY
+
       - name: Normalize package id and version metadata
         run: |
           python - <<'PY'

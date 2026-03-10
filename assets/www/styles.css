@@ -151,9 +151,9 @@ body {
 .sidebar-panel {
   position: fixed;
   left: 0.75rem;
-  top: 6.2rem;
+  top: 7.1rem;
   width: 18.8rem;
-  max-height: calc(100vh - 7.4rem);
+  max-height: calc(100vh - 8.2rem);
   overflow: auto;
   z-index: 700;
   transition: transform 0.25s ease;
@@ -162,7 +162,7 @@ body {
 
 .sidebar-toggle {
   position: fixed;
-  top: 6.2rem;
+  top: 7.1rem;
   left: calc(0.75rem + 18.8rem);
   transform: none;
   width: 2.2rem;
@@ -270,6 +270,13 @@ button,
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
+  transition: transform 0.08s ease, filter 0.08s ease;
+}
+
+button:active,
+.import-label:active {
+  transform: translateY(1px) scale(0.98);
+  filter: brightness(0.92);
 }
 
 .import-label input {
@@ -356,9 +363,14 @@ table td:nth-child(6) {
   margin: 0 auto;
 }
 
-.card-art {
+.art-wrap {
+  position: relative;
   width: 100%;
   max-width: var(--thumb-w);
+}
+
+.card-art {
+  width: 100%;
   aspect-ratio: 104 / 144;
   height: auto;
   display: block;
@@ -372,6 +384,22 @@ table td:nth-child(6) {
   transform-origin: center center;
   position: relative;
   z-index: 1;
+}
+
+.dual-toggle {
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid #8ca6df;
+  background: rgba(10, 18, 36, 0.9);
+  color: #e4ecff;
+  font-size: 0.8rem;
+  line-height: 1;
+  z-index: 4;
 }
 
 .card-art.zoomed {
@@ -423,6 +451,24 @@ body.zoom-active .zoom-nav {
   pointer-events: auto;
 }
 
+.zoom-promo-info {
+  position: fixed;
+  left: 50%;
+  bottom: 0.7rem;
+  transform: translateX(-50%);
+  width: min(92vw, 560px);
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #8ca6df;
+  background: rgba(8, 14, 30, 0.95);
+  color: #e4ecff;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  z-index: 1300;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
 .zoom-nav.disabled {
   opacity: 0.35 !important;
 }
@@ -445,6 +491,12 @@ body.zoom-active .zoom-nav {
   border: 1px solid var(--border);
   background: rgba(23, 38, 72, 0.94);
   color: #dfe8ff;
+  transition: transform 0.08s ease, filter 0.08s ease;
+}
+
+.qty-btn:active {
+  transform: translateY(1px) scale(0.96);
+  filter: brightness(0.92);
 }
 
 .qty-value {
@@ -483,14 +535,14 @@ body.zoom-active .zoom-nav {
 
   .sidebar-panel {
     left: 0.55rem;
-    top: 5.6rem;
+    top: 6.3rem;
     width: min(86vw, 18.8rem);
-    max-height: calc(100vh - 6.6rem);
+    max-height: calc(100vh - 7.2rem);
     border-top-right-radius: 0;
   }
 
   .sidebar-toggle {
-    top: 5.6rem;
+    top: 6.3rem;
     left: calc(0.55rem + min(86vw, 18.8rem));
   }
 

@@ -85,7 +85,10 @@
     <template id="rowTemplate">
       <tr>
         <td class="card-art-cell">
-          <img class="card-art" alt="Card art" loading="lazy" />
+          <div class="art-wrap">
+            <img class="card-art" alt="Card art" loading="lazy" />
+            <button class="dual-toggle hidden" type="button" title="Switch card side" aria-label="Switch card side">&#8645;</button>
+          </div>
           <div class="owned-controls">
             <button class="qty-btn dec" type="button">-</button>
             <span class="qty-value">0</span>
