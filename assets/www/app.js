@@ -1373,6 +1373,7 @@ function registerServiceWorker() {
 
 function triggerHapticFeedback() {
   try {
+    if (nativePost({ type: "haptic_feedback", style: "light" })) return;
     if (navigator.vibrate) navigator.vibrate(8);
   } catch {
     // Ignore unsupported platforms.

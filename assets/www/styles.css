@@ -33,7 +33,7 @@ body {
   color: #f3f7ff;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 1rem;
 }
 
@@ -51,14 +51,20 @@ body {
   gap: 0.45rem;
 }
 
+.header-right {
+  display: grid;
+  justify-items: end;
+  gap: 0.3rem;
+}
+
 .legal-wrap {
   display: grid;
   gap: 0.35rem;
-  max-width: min(70vw, 780px);
+  max-width: min(62vw, 560px);
 }
 
 .legal-toggle {
-  justify-self: start;
+  justify-self: end;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.35rem 0.6rem;
@@ -78,6 +84,7 @@ body {
   color: #d7e3ff;
   font-size: 0.73rem;
   line-height: 1.35;
+  text-align: left;
 }
 
 .hidden {
@@ -89,6 +96,7 @@ body {
   height: 78px;
   object-fit: contain;
   flex: 0 0 auto;
+  margin-top: -0.2rem;
 }
 
 .layout {
@@ -151,9 +159,9 @@ body {
 .sidebar-panel {
   position: fixed;
   left: 0.75rem;
-  top: 7.1rem;
+  top: 7.6rem;
   width: 18.8rem;
-  max-height: calc(100vh - 8.2rem);
+  max-height: calc(100vh - 8.7rem);
   overflow: auto;
   z-index: 700;
   transition: transform 0.25s ease;
@@ -162,7 +170,7 @@ body {
 
 .sidebar-toggle {
   position: fixed;
-  top: 7.1rem;
+  top: 7.6rem;
   left: calc(0.75rem + 18.8rem);
   transform: none;
   width: 2.2rem;
@@ -517,7 +525,7 @@ body.zoom-active .zoom-nav {
 
 @media (max-width: 860px) {
   .app-header {
-    align-items: center;
+    align-items: flex-start;
   }
 
   .header-art {
@@ -535,14 +543,14 @@ body.zoom-active .zoom-nav {
 
   .sidebar-panel {
     left: 0.55rem;
-    top: 6.3rem;
+    top: 7rem;
     width: min(86vw, 18.8rem);
-    max-height: calc(100vh - 7.2rem);
+    max-height: calc(100vh - 7.9rem);
     border-top-right-radius: 0;
   }
 
   .sidebar-toggle {
-    top: 6.3rem;
+    top: 7rem;
     left: calc(0.55rem + min(86vw, 18.8rem));
   }
 

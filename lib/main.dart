@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -145,6 +146,8 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
         await _handleExport(parsed);
       } else if (type == 'import_latest') {
         await _handleImportLatest();
+      } else if (type == 'haptic_feedback') {
+        await HapticFeedback.selectionClick();
       }
     } catch (_) {
       // Ignore malformed messages.
