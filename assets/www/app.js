@@ -462,6 +462,13 @@ const SET_NAME_BY_CODE = {
   BP13: "Dominion of Darkness",
   BP14: "Banquet of Dreams",
   BP15: "Trial of the Omens",
+  BP16: "New World Genesis",
+  SDD01: "Showdown Deck: Forestcraft",
+  SDD02: "Showdown Deck: Swordcraft",
+  SDD03: "Showdown Deck: Runecraft",
+  SDD04: "Showdown Deck: Dragoncraft",
+  SDD05: "Showdown Deck: Abysscraft",
+  SDD06: "Showdown Deck: Havencraft",
   CP01: "Umamusume: Pretty Derby",
   CP02: "THE IDOLM@STER CINDERELLA GIRLS",
   CP03: "Cardfight!! Vanguard",
@@ -529,8 +536,50 @@ function promoOrderIndex(cardCode) {
   return Object.hasOwn(PROMO_FRONT_ORDER, prefix) ? PROMO_FRONT_ORDER[prefix] : 99;
 }
 
+const SHOWDOWN_DECK_PLAYSET_LIMITS = {
+  SDD01: {
+    LD01: 1, "001": 3, "002": 2, "003": 2, "004": 3, "005": 2, "006": 2, "007": 1, "008": 3, "009": 2,
+    "010": 2, "011": 3, "012": 3, "013": 2, "014": 3, "015": 3, "016": 2, "017": 3, "018": 3, "019": 3,
+    "020": 3, T01: 4, T02: 5,
+  },
+  SDD02: {
+    LD01: 1, "001": 3, "002": 3, "003": 3, "004": 3, "005": 2, "006": 3, "007": 1, "008": 3, "009": 1,
+    "010": 3, "011": 3, "012": 3, "013": 2, "014": 3, "015": 2, "016": 3, "017": 1, "018": 3, "019": 2,
+    "020": 3, T01: 2, T02: 1, T03: 2, T04: 2, T05: 2,
+  },
+  SDD03: {
+    LD01: 1, "001": 3, "002": 2, "003": 3, "004": 3, "005": 3, "006": 1, "007": 1, "008": 3, "009": 3,
+    "010": 2, "011": 3, "012": 1, "013": 1, "014": 1, "015": 2, "016": 3, "017": 1, "018": 3, "019": 3,
+    "020": 1, "021": 3, "022": 2, "023": 2, T01: 2, T02: 2, T03: 1, T04: 1, T05: 1, T06: 2,
+  },
+  SDD04: {
+    LD01: 1, "001": 3, "002": 3, "003": 3, "004": 3, "005": 3, "006": 3, "007": 3, "008": 2, "009": 3,
+    "010": 2, "011": 2, "012": 3, "013": 3, "014": 3, "015": 2, "016": 3, "017": 3, "018": 3, T01: 9,
+  },
+  SDD05: {
+    LD01: 1, "001": 3, "002": 1, "003": 3, "004": 3, "005": 3, "006": 3, "007": 3, "008": 2, "009": 3,
+    "010": 3, "011": 3, "012": 3, "013": 3, "014": 3, "015": 2, "016": 1, "017": 3, "018": 3, "019": 2,
+    "020": 1, T01: 1, T02: 4, T03: 4,
+  },
+  SDD06: {
+    LD01: 1, "001": 3, "002": 3, "003": 3, "004": 1, "005": 3, "006": 3, "007": 3, "008": 3, "009": 3,
+    "010": 3, "011": 3, "012": 3, "013": 3, "014": 3, "015": 3, "016": 1, "017": 3, "018": 3, T01: 9,
+  },
+};
+
+function showdownDeckPlaysetLimitForCode(cardCode) {
+  const match = normalizeCardCode(cardCode).match(/^(SDD0[1-6])-([A-Z0-9]+)EN$/);
+  if (!match) return null;
+  const [, setCode, suffix] = match;
+  const setLimits = SHOWDOWN_DECK_PLAYSET_LIMITS[setCode];
+  if (!setLimits || !Object.hasOwn(setLimits, suffix)) return null;
+  return setLimits[suffix];
+}
+
 function playsetLimitForCard(card) {
   const cardCode = normalizeCardCode(card?.code || "");
+  const showdownLimit = showdownDeckPlaysetLimitForCode(cardCode);
+  if (showdownLimit !== null) return showdownLimit;
   if (Object.hasOwn(STARTER_DECK_PLAYSET_LIMIT_BY_CODE, cardCode)) {
     return STARTER_DECK_PLAYSET_LIMIT_BY_CODE[cardCode];
   }
@@ -541,9 +590,10 @@ function playsetLimitForCard(card) {
 
   const normalizedSet = normalizeSetCodeForLookup(card?.setCode || "");
   if (ONE_COPY_SET_CODES.has(normalizedSet)) return 1;
+  if (normalizedSet === "PR") return 1;
 
   const rarity = String(card?.rarity || "");
-  if (rarity === "Leader" || rarity === "Token") return 1;
+  if (rarity === "Leader" || rarity === "Token" || rarity === "Promo") return 1;
 
   return 3;
 }
@@ -556,6 +606,7 @@ function initDualGroups() {
 }
 
 const searchInput = document.getElementById("searchInput");
+const searchBtn = document.getElementById("searchBtn");
 const setFilter = document.getElementById("setFilter");
 const rarityFilterGroup = document.getElementById("rarityFilterGroup");
 const ownedOnly = document.getElementById("ownedOnly");
@@ -608,6 +659,7 @@ let zoomNavRight = null;
 let zoomPromoInfo = null;
 let rarityOutliers = [];
 let dualGroupByCode = new Map();
+let appliedSearchText = "";
 
 function prPromoSourceByCode(cardCode) {
   const normalized = normalizeCardCode(cardCode);
@@ -918,25 +970,27 @@ function selectedRarities() {
   return selected;
 }
 
-function filteredCards() {
-  const text = searchInput.value.trim().toLowerCase();
+function matchesActiveFilters(card, qty = ownedFor(card.code)) {
+  const text = appliedSearchText;
   const set = setFilter.value;
   const selected = selectedRarities();
   const requireOwned = ownedOnly.checked;
   const requireIncomplete = incompleteOnly.checked;
   const requireExtra = extraOnly.checked;
+  const playsetLimit = playsetLimitForCard(card);
 
-  const rows = cards.filter((card) => {
-    const qty = ownedFor(card.code);
-    const playsetLimit = playsetLimitForCard(card);
-    if (set && card.setCode !== set) return false;
-    if (selected.size > 0 && !selected.has(card.rarity)) return false;
-    if (requireOwned && qty === 0) return false;
-    if (requireIncomplete && qty >= playsetLimit) return false;
-    if (requireExtra && qty <= playsetLimit) return false;
-    if (!text) return true;
-    return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
-  });
+  if (set && card.setCode !== set) return false;
+  if (selected.size > 0 && !selected.has(card.rarity)) return false;
+  if (requireOwned && qty === 0) return false;
+  if (requireIncomplete && qty >= playsetLimit) return false;
+  if (requireExtra && qty <= playsetLimit) return false;
+  if (!text) return true;
+  return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
+}
+
+function filteredCards() {
+  const set = setFilter.value;
+  const rows = cards.filter((card) => matchesActiveFilters(card));
 
   if (set === "PR") {
     rows.sort((a, b) => {
@@ -1000,6 +1054,7 @@ function setZoomedElement(nextIndex) {
 function openZoomFor(artEl) {
   const name = artEl.dataset.cardName || "";
   const code = artEl.dataset.cardCode || "";
+  const baseCode = artEl.dataset.baseCardCode || code;
   if (!name || !code) return;
 
   if (artEl.classList.contains("zoomed")) {
@@ -1007,12 +1062,30 @@ function openZoomFor(artEl) {
     return;
   }
 
-  const clickedCard = cards.find((c) => c.code === code);
+  const baseCard = cardByCode.get(baseCode) || cards.find((c) => c.code === baseCode) || null;
+  const clickedCard =
+    cardByCode.get(code) ||
+    cards.find((c) => c.code === code) ||
+    (baseCard ? resolveFaceCard(baseCard, code) : null);
   if (!clickedCard) return;
 
   // Use full dataset (not current set filter) and keep evolved/non-evolved separate.
   const group = cards.filter((c) => c.name === clickedCard.name && c.isEvolved === clickedCard.isEvolved);
-  if (!group.length) return;
+  if (!group.length) {
+    closeZoom();
+    zoomState = {
+      cards: [clickedCard],
+      index: 0,
+      anchorEl: artEl,
+      anchorCode: clickedCard.code,
+    };
+    artEl.classList.add("zoomed");
+    setZoomedElement(0);
+    return;
+  }
+  if (!group.some((c) => c.code === clickedCard.code)) {
+    group.unshift(clickedCard);
+  }
 
   closeZoom();
   zoomState = {
@@ -1052,6 +1125,7 @@ function setCardFace(artEl, baseCard, faceCode) {
   applyArtToImage(artEl, faceCard);
   artEl.dataset.cardName = faceCard.name;
   artEl.dataset.cardCode = faceCard.code;
+  artEl.dataset.baseCardCode = baseCard.code;
 }
 
 function createZoomNav() {
@@ -1111,18 +1185,25 @@ function createRow(card) {
   fragment.querySelector(".promo-source").textContent = card.promoSource;
   qtyEl.textContent = String(ownedFor(card.code));
 
-  fragment.querySelector(".dec").addEventListener("click", () => {
-    const next = ownedFor(card.code) - 1;
+  function updateOwnedCount(delta) {
+    const wasVisible = matchesActiveFilters(card);
+    const next = ownedFor(card.code) + delta;
     setOwned(card.code, next);
-    qtyEl.textContent = String(ownedFor(card.code));
-    renderTable();
+    const currentQty = ownedFor(card.code);
+    const isVisible = matchesActiveFilters(card, currentQty);
+    qtyEl.textContent = String(currentQty);
+
+    if (wasVisible !== isVisible) {
+      renderTable();
+    }
+  }
+
+  fragment.querySelector(".dec").addEventListener("click", () => {
+    updateOwnedCount(-1);
   });
 
   fragment.querySelector(".inc").addEventListener("click", () => {
-    const next = ownedFor(card.code) + 1;
-    setOwned(card.code, next);
-    qtyEl.textContent = String(ownedFor(card.code));
-    renderTable();
+    updateOwnedCount(1);
   });
 
   return tr;
@@ -1381,7 +1462,16 @@ function triggerHapticFeedback() {
 }
 
 function bindEvents() {
-  searchInput.addEventListener("input", renderTable);
+  searchBtn.addEventListener("click", () => {
+    appliedSearchText = searchInput.value.trim().toLowerCase();
+    renderTable();
+  });
+  searchInput.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Enter") return;
+    ev.preventDefault();
+    appliedSearchText = searchInput.value.trim().toLowerCase();
+    renderTable();
+  });
   setFilter.addEventListener("change", renderTable);
   ownedOnly.addEventListener("change", renderTable);
   incompleteOnly.addEventListener("change", renderTable);

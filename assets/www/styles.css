@@ -231,6 +231,10 @@ body.sidebar-hidden .layout {
   color: var(--text);
 }
 
+.search-apply-btn {
+  width: 100%;
+}
+
 .rarity-group {
   max-height: 9rem;
   overflow: auto;
