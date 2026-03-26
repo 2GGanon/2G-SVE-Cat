@@ -755,7 +755,7 @@ String normalizeCardCode(String rawCode) {
   } catch (_) {
     // Keep original if decoding fails.
   }
-  return code.replaceAll(RegExp(r'-LD[\u24C8S](\d+EN)$', caseSensitive: false), '-LD$1');
+  return code.replaceAll(RegExp(r'-LD[\u24C8S](\d+EN)$', caseSensitive: false), '-LD\$1');
 }
 
 String setCodeFromCardCode(String cardCode) {
