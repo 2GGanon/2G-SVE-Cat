@@ -144,6 +144,35 @@ jobs:
           print(f"Updated {target} with package={app_package}, versionName={version_name}, versionCode={version_code}")
           PY
 
+      - name: Disable release minification for ML Kit compatibility
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          gradle_kts = Path("android/app/build.gradle.kts")
+          gradle_groovy = Path("android/app/build.gradle")
+          target = gradle_kts if gradle_kts.exists() else gradle_groovy
+          if not target.exists():
+            raise SystemExit("Could not find android/app/build.gradle(.kts)")
+
+          text = target.read_text(encoding="utf-8")
+          original = text
+
+          if target.suffix == ".kts":
+            text = re.sub(r"isMinifyEnabled\s*=\s*true", "isMinifyEnabled = false", text)
+            text = re.sub(r"isShrinkResources\s*=\s*true", "isShrinkResources = false", text)
+          else:
+            text = re.sub(r"minifyEnabled\s+true", "minifyEnabled false", text)
+            text = re.sub(r"shrinkResources\s+true", "shrinkResources false", text)
+
+          if text != original:
+            target.write_text(text, encoding="utf-8")
+            print(f"Disabled release minification in {target}")
+          else:
+            print(f"No minification flags needed patching in {target}")
+          PY
+
       - name: Ensure bundled card art is present
         run: |
           set -e
