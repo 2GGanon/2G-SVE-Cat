@@ -162,15 +162,50 @@ jobs:
           if target.suffix == ".kts":
             text = re.sub(r"isMinifyEnabled\s*=\s*true", "isMinifyEnabled = false", text)
             text = re.sub(r"isShrinkResources\s*=\s*true", "isShrinkResources = false", text)
+            release_patterns = [
+              (r'(getByName\("release"\)\s*\{)', r'\1\n            isMinifyEnabled = false\n            isShrinkResources = false'),
+              (r'(create\("release"\)\s*\{)', r'\1\n            isMinifyEnabled = false\n            isShrinkResources = false'),
+              (r'(\brelease\s*\{)', r'\1\n            isMinifyEnabled = false\n            isShrinkResources = false'),
+            ]
           else:
             text = re.sub(r"minifyEnabled\s+true", "minifyEnabled false", text)
             text = re.sub(r"shrinkResources\s+true", "shrinkResources false", text)
+            release_patterns = [
+              (r'(release\s*\{)', r'\1\n            minifyEnabled false\n            shrinkResources false'),
+            ]
+
+          for pattern, replacement in release_patterns:
+            updated, count = re.subn(pattern, replacement, text, count=1)
+            if count:
+              text = updated
+              break
 
           if text != original:
             target.write_text(text, encoding="utf-8")
             print(f"Disabled release minification in {target}")
           else:
             print(f"No minification flags needed patching in {target}")
+          PY
+
+      - name: Add ML Kit R8 compatibility rules
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          rules = """-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**
+"""
+
+          rules_path = Path("android/app/proguard-rules.pro")
+          existing = rules_path.read_text(encoding="utf-8") if rules_path.exists() else ""
+          if rules.strip() not in existing:
+            if existing and not existing.endswith("\n"):
+              existing += "\n"
+            existing += rules
+            rules_path.write_text(existing, encoding="utf-8")
+          print(f"Updated {rules_path}")
           PY
 
       - name: Ensure bundled card art is present
