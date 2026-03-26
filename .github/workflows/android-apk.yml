@@ -192,11 +192,12 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          rules = """-dontwarn com.google.mlkit.vision.text.chinese.**
--dontwarn com.google.mlkit.vision.text.devanagari.**
--dontwarn com.google.mlkit.vision.text.japanese.**
--dontwarn com.google.mlkit.vision.text.korean.**
-"""
+          rules = (
+            "-dontwarn com.google.mlkit.vision.text.chinese.**\n"
+            "-dontwarn com.google.mlkit.vision.text.devanagari.**\n"
+            "-dontwarn com.google.mlkit.vision.text.japanese.**\n"
+            "-dontwarn com.google.mlkit.vision.text.korean.**\n"
+          )
 
           rules_path = Path("android/app/proguard-rules.pro")
           existing = rules_path.read_text(encoding="utf-8") if rules_path.exists() else ""
