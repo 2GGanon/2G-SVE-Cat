@@ -311,7 +311,7 @@ class _NativeCardScannerPageState extends State<NativeCardScannerPage> {
     if (controller == null || !controller.value.isInitialized) return;
 
     final now = DateTime.now();
-    if (now.difference(_lastAnalysisAt) < const Duration(milliseconds: 700)) {
+    if (now.difference(_lastAnalysisAt) < const Duration(milliseconds: 450)) {
       return;
     }
     _lastAnalysisAt = now;
@@ -345,7 +345,7 @@ class _NativeCardScannerPageState extends State<NativeCardScannerPage> {
           _pendingCode = '';
           _pendingHits = 0;
           _noMatchFrames += 1;
-          if (_noMatchFrames >= 3) {
+          if (_noMatchFrames >= 5) {
             _stableMatch = null;
           }
           _statusText = 'Searching for a readable card...';
@@ -361,7 +361,7 @@ class _NativeCardScannerPageState extends State<NativeCardScannerPage> {
         }
 
         _statusText = 'Detected by ${match.matchedBy}: ${match.card.code}';
-        if (_pendingHits >= 2) {
+        if (_pendingHits >= 2 || match.score >= 240) {
           _stableMatch = match.card;
         }
       });
@@ -566,12 +566,18 @@ class ScannerCardRecord {
     required this.code,
     required this.setCode,
     required this.artAssetCandidates,
+    required this.normalizedName,
+    required this.nameTokens,
+    required this.rarityHint,
   });
 
   final String name;
   final String code;
   final String setCode;
   final List<String> artAssetCandidates;
+  final String normalizedName;
+  final List<String> nameTokens;
+  final String rarityHint;
 
   factory ScannerCardRecord.fromCsvRow(Map<String, String> row) {
     final code = (row['Card Code'] ?? '').trim();
@@ -593,6 +599,9 @@ class ScannerCardRecord {
       code: code,
       setCode: setCode,
       artAssetCandidates: candidates,
+      normalizedName: normalizeScanText(name),
+      nameTokens: tokenizeNameForScan(name),
+      rarityHint: rarityHintFromCardCode(code),
     );
   }
 
@@ -610,10 +619,12 @@ class ScannerMatch {
   const ScannerMatch({
     required this.card,
     required this.matchedBy,
+    required this.score,
   });
 
   final ScannerCardRecord card;
   final String matchedBy;
+  final int score;
 }
 
 class ScannerMatcher {
@@ -624,40 +635,123 @@ class ScannerMatcher {
   final List<ScannerCardRecord> cards;
   final Map<String, List<ScannerCardRecord>> _codeAliasMap = {};
   final Map<String, List<ScannerCardRecord>> _nameAliasMap = {};
+  final Map<String, List<ScannerCardRecord>> _nameTokenMap = {};
 
   void _buildIndexes() {
     for (final card in cards) {
       for (final alias in codeScanAliases(card.code)) {
         _codeAliasMap.putIfAbsent(alias, () => <ScannerCardRecord>[]).add(card);
       }
-      final nameAlias = normalizeScanText(card.name);
+      final nameAlias = card.normalizedName;
       if (nameAlias.length >= 6) {
         _nameAliasMap.putIfAbsent(nameAlias, () => <ScannerCardRecord>[]).add(card);
+      }
+      for (final token in card.nameTokens) {
+        _nameTokenMap.putIfAbsent(token, () => <ScannerCardRecord>[]).add(card);
       }
     }
   }
 
   ScannerMatch? findBestScanMatch(String recognizedText) {
-    return _findCardByCodeCandidates(recognizedText) ??
-        _findCardByNameCandidates(recognizedText);
+    final compact = normalizeScanText(recognizedText);
+    if (compact.isEmpty) {
+      return null;
+    }
+
+    final scored = <String, _ScoredMatcherCandidate>{};
+
+    void addCandidate(
+      ScannerCardRecord card,
+      int score,
+      String reason,
+    ) {
+      final existing = scored[card.code];
+      if (existing == null) {
+        scored[card.code] = _ScoredMatcherCandidate(
+          card: card,
+          score: score,
+          reasons: {reason},
+        );
+        return;
+      }
+      existing.score += score;
+      existing.reasons.add(reason);
+    }
+
+    final fullNameMatches = _findFullNameMatches(compact);
+    for (final match in fullNameMatches) {
+      addCandidate(match.card, match.score, 'name');
+    }
+
+    final tokenMatches = _findNameTokenMatches(recognizedText);
+    for (final match in tokenMatches) {
+      addCandidate(match.card, match.score, 'name token');
+    }
+
+    final codeMatches = _findCardByCodeCandidates(recognizedText);
+    for (final match in codeMatches) {
+      addCandidate(match.card, match.score, match.matchedBy);
+    }
+
+    if (scored.isEmpty) {
+      return null;
+    }
+
+    for (final candidate in scored.values) {
+      final rarityHint = candidate.card.rarityHint;
+      if (rarityHint.isNotEmpty && compact.contains(rarityHint)) {
+        candidate.score += 18;
+        candidate.reasons.add('rarity');
+      }
+    }
+
+    final ranked = scored.values.toList()
+      ..sort((a, b) {
+        final score = b.score.compareTo(a.score);
+        if (score != 0) return score;
+        final reasons = b.reasons.length.compareTo(a.reasons.length);
+        if (reasons != 0) return reasons;
+        return a.card.code.compareTo(b.card.code);
+      });
+
+    final best = ranked.first;
+    final secondScore = ranked.length > 1 ? ranked[1].score : -999;
+    final margin = best.score - secondScore;
+    if (best.score < 45) {
+      return null;
+    }
+    if (ranked.length > 1 && margin < 12) {
+      return null;
+    }
+
+    final matchedBy = best.reasons.contains('name')
+        ? 'name'
+        : best.reasons.contains('name token')
+            ? 'name'
+            : best.reasons.first;
+    return ScannerMatch(card: best.card, matchedBy: matchedBy, score: best.score);
   }
 
-  ScannerMatch? _findCardByCodeCandidates(String recognizedText) {
+  List<ScannerMatch> _findCardByCodeCandidates(String recognizedText) {
     final candidates = extractScanCodeCandidates(recognizedText);
     final directHits = <String, ScannerMatch>{};
 
     for (final candidate in candidates) {
       final exact = _codeAliasMap[candidate];
       if (exact != null && exact.length == 1) {
-        directHits[exact.first.code] = ScannerMatch(card: exact.first, matchedBy: 'code');
+        directHits[exact.first.code] = ScannerMatch(
+          card: exact.first,
+          matchedBy: 'code',
+          score: 120 + candidate.length,
+        );
       }
     }
 
-    if (directHits.length == 1) {
-      return directHits.values.first;
+    if (directHits.isNotEmpty) {
+      return directHits.values.toList();
     }
 
-    final fuzzyHits = <_ScoredMatch>[];
+    final fuzzyHits = <ScannerMatch>[];
     for (final candidate in candidates) {
       _codeAliasMap.forEach((alias, aliasCards) {
         if (aliasCards.length != 1) return;
@@ -665,87 +759,85 @@ class ScannerMatcher {
         final distance = editDistanceWithinLimit(candidate, alias, limit);
         if (distance <= limit) {
           fuzzyHits.add(
-            _ScoredMatch(
+            ScannerMatch(
               card: aliasCards.first,
-              score: alias.length - distance * 4,
-              distance: distance,
+              matchedBy: distance == 0 ? 'code' : 'code (OCR corrected)',
+              score: 70 + alias.length - distance * 6,
             ),
           );
         }
       });
     }
 
-    if (fuzzyHits.isEmpty) {
-      return null;
-    }
-
-    fuzzyHits.sort((a, b) {
-      final score = b.score.compareTo(a.score);
-      if (score != 0) return score;
-      final distance = a.distance.compareTo(b.distance);
-      if (distance != 0) return distance;
-      return a.card.code.compareTo(b.card.code);
-    });
-
-    final best = fuzzyHits.first;
-    final top = fuzzyHits
-        .where((entry) => entry.score == best.score && entry.distance == best.distance)
-        .toList();
-    if (top.length == 1) {
-      return ScannerMatch(
-        card: top.first.card,
-        matchedBy: top.first.distance == 0 ? 'code' : 'code (OCR corrected)',
-      );
-    }
-
-    return null;
+    return fuzzyHits;
   }
 
-  ScannerMatch? _findCardByNameCandidates(String recognizedText) {
-    final compact = normalizeScanText(recognizedText);
-    if (compact.isEmpty) return null;
-
-    final exactHits = <_ScoredMatch>[];
+  List<ScannerMatch> _findFullNameMatches(String compact) {
+    final exactHits = <ScannerMatch>[];
     _nameAliasMap.forEach((alias, aliasCards) {
       if (!compact.contains(alias)) return;
       for (final card in aliasCards) {
-        exactHits.add(_ScoredMatch(card: card, score: alias.length, distance: 0));
+        exactHits.add(
+          ScannerMatch(
+            card: card,
+            matchedBy: 'name',
+            score: 180 + alias.length * 2,
+          ),
+        );
       }
     });
+    return exactHits;
+  }
 
-    if (exactHits.isEmpty) {
-      return null;
+  List<ScannerMatch> _findNameTokenMatches(String recognizedText) {
+    final tokens = tokenizeNameForScan(recognizedText);
+    if (tokens.isEmpty) {
+      return const [];
     }
 
-    exactHits.sort((a, b) {
-      final score = b.score.compareTo(a.score);
-      if (score != 0) return score;
-      return a.card.code.compareTo(b.card.code);
-    });
-    final topScore = exactHits.first.score;
-    final top = exactHits.where((entry) => entry.score == topScore).toList();
-    final uniqueByCode = <String, _ScoredMatch>{};
-    for (final entry in top) {
-      uniqueByCode.putIfAbsent(entry.card.code, () => entry);
-    }
-    if (uniqueByCode.length == 1) {
-      return ScannerMatch(card: uniqueByCode.values.first.card, matchedBy: 'name');
+    final scores = <String, _ScoredMatcherCandidate>{};
+    for (final token in tokens) {
+      final cardsForToken = _nameTokenMap[token];
+      if (cardsForToken == null) continue;
+      final tokenScore = token.length * 12;
+      for (final card in cardsForToken) {
+        final existing = scores[card.code];
+        if (existing == null) {
+          scores[card.code] = _ScoredMatcherCandidate(
+            card: card,
+            score: tokenScore,
+            reasons: {'name token'},
+          );
+        } else {
+          existing.score += tokenScore;
+          existing.reasons.add('name token');
+        }
+      }
     }
 
-    return null;
+    return scores.values
+        .where((entry) => entry.score >= 48)
+        .map(
+          (entry) => ScannerMatch(
+            card: entry.card,
+            matchedBy: 'name token',
+            score: entry.score,
+          ),
+        )
+        .toList();
   }
 }
 
-class _ScoredMatch {
-  const _ScoredMatch({
+class _ScoredMatcherCandidate {
+  _ScoredMatcherCandidate({
     required this.card,
     required this.score,
-    required this.distance,
+    required this.reasons,
   });
 
   final ScannerCardRecord card;
-  final int score;
-  final int distance;
+  int score;
+  final Set<String> reasons;
 }
 
 String normalizeCardCode(String rawCode) {
@@ -769,6 +861,40 @@ String normalizeScanText(String value) {
       .toUpperCase()
       .replaceAll(RegExp(r'[^A-Z0-9]'), '');
   return normalized;
+}
+
+List<String> tokenizeNameForScan(String value) {
+  const stopWords = {
+    'THE',
+    'AND',
+    'FOR',
+    'OF',
+    'TO',
+    'A',
+    'AN',
+    'IN',
+    'ON',
+    'MY',
+    'YOUR',
+  };
+
+  return value
+      .toUpperCase()
+      .split(RegExp(r'[^A-Z0-9]+'))
+      .map((token) => token.trim())
+      .where((token) => token.length >= 4 && !stopWords.contains(token))
+      .toSet()
+      .toList();
+}
+
+String rarityHintFromCardCode(String cardCode) {
+  final normalized = normalizeCardCode(cardCode).toUpperCase();
+  final suffix = normalized.contains('-') ? normalized.split('-').last : normalized;
+  final prefixMatch = RegExp(r'^(SSP|SL|SP|PR|P|U|LD|T|EP)').firstMatch(suffix);
+  if (prefixMatch != null) {
+    return prefixMatch.group(1) ?? '';
+  }
+  return '';
 }
 
 Set<String> codeScanAliases(String code) {
