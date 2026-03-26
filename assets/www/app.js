@@ -612,6 +612,7 @@ const rarityFilterGroup = document.getElementById("rarityFilterGroup");
 const ownedOnly = document.getElementById("ownedOnly");
 const incompleteOnly = document.getElementById("incompleteOnly");
 const extraOnly = document.getElementById("extraOnly");
+const scanBtn = document.getElementById("scanBtn");
 const exportBtn = document.getElementById("exportBtn");
 const importBtn = document.getElementById("importBtn");
 const importInput = document.getElementById("importInput");
@@ -660,6 +661,7 @@ let zoomPromoInfo = null;
 let rarityOutliers = [];
 let dualGroupByCode = new Map();
 let appliedSearchText = "";
+let scanInFlight = false;
 
 function prPromoSourceByCode(cardCode) {
   const normalized = normalizeCardCode(cardCode);
@@ -697,6 +699,105 @@ function nativePost(message) {
   }
 }
 
+function setScanBusy(isBusy) {
+  scanInFlight = isBusy;
+  if (!scanBtn) return;
+  scanBtn.disabled = isBusy;
+  scanBtn.textContent = isBusy ? "Scanning..." : "Scan Card";
+}
+
+function normalizeScanText(value) {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function codeScanAliases(code) {
+  const normalized = normalizeCardCode(code).toUpperCase();
+  const aliases = new Set();
+  const push = (value) => {
+    const compact = normalizeScanText(value);
+    if (compact.length >= 5) aliases.add(compact);
+  };
+
+  push(normalized);
+  push(normalized.replace(/_URA/gi, ""));
+  push(normalized.replace(/EN$/i, ""));
+  push(normalized.replace(/_URA/gi, "").replace(/EN$/i, ""));
+  return [...aliases];
+}
+
+function nameScanAlias(name) {
+  return normalizeScanText(name);
+}
+
+function findBestScanMatch(recognizedText) {
+  const compact = normalizeScanText(recognizedText);
+  if (!compact) return null;
+
+  const codeMatches = [];
+  cards.forEach((card) => {
+    let bestScore = 0;
+    codeScanAliases(card.code).forEach((alias) => {
+      if (compact.includes(alias)) {
+        bestScore = Math.max(bestScore, alias.length);
+      }
+    });
+    if (bestScore > 0) {
+      codeMatches.push({ card, score: bestScore });
+    }
+  });
+
+  codeMatches.sort((a, b) => b.score - a.score || a.card.code.localeCompare(b.card.code));
+  if (codeMatches.length && codeMatches[0].score > 0) {
+    const bestScore = codeMatches[0].score;
+    const topMatches = codeMatches.filter((entry) => entry.score === bestScore);
+    if (topMatches.length === 1) {
+      return { card: topMatches[0].card, matchedBy: "code" };
+    }
+  }
+
+  const nameMatches = [];
+  cards.forEach((card) => {
+    const alias = nameScanAlias(card.name);
+    if (alias.length >= 6 && compact.includes(alias)) {
+      nameMatches.push({ card, score: alias.length });
+    }
+  });
+
+  nameMatches.sort((a, b) => b.score - a.score || a.card.code.localeCompare(b.card.code));
+  if (nameMatches.length) {
+    const bestScore = nameMatches[0].score;
+    const topMatches = nameMatches.filter((entry) => entry.score === bestScore);
+    if (topMatches.length === 1) {
+      return { card: topMatches[0].card, matchedBy: "name" };
+    }
+  }
+
+  return null;
+}
+
+function applyScanMatch(match) {
+  const { card, matchedBy } = match;
+  const nextQty = ownedFor(card.code) + 1;
+  setOwned(card.code, nextQty);
+  renderTable();
+  alert(
+    `Scan matched by ${matchedBy}:\n${card.name}\n${card.code}\nOwned copies: ${nextQty}`
+  );
+}
+
+function startNativeScan() {
+  if (scanInFlight) return;
+  if (!nativePost({ type: "scan_card" })) {
+    alert("Card scanning is only available in the Android app build.");
+    return;
+  }
+  setScanBusy(true);
+}
+
 function importCollectionFromText(jsonText) {
   const parsed = JSON.parse(String(jsonText || "{}"));
   if (!parsed || typeof parsed !== "object" || typeof parsed.data !== "object") {
@@ -731,6 +832,29 @@ window.__sveNativeImportResult = function __sveNativeImportResult(payloadJson) {
     alert(`Collection import complete.\nLoaded:\n${payload.path}`);
   } catch {
     alert("Import failed. Use a valid export JSON file.");
+  }
+};
+
+window.__sveNativeScanResult = function __sveNativeScanResult(payloadJson) {
+  setScanBusy(false);
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (!payload.ok) {
+      if (!payload.cancelled) {
+        alert(`Scan failed: ${payload.error || "Unknown error"}`);
+      }
+      return;
+    }
+
+    const match = findBestScanMatch(payload.recognizedText || "");
+    if (!match) {
+      alert("No unique card match was found from the scanned text.");
+      return;
+    }
+
+    applyScanMatch(match);
+  } catch {
+    alert("Scan failed.");
   }
 };
 
@@ -1489,6 +1613,11 @@ function bindEvents() {
   exportBtn.addEventListener("click", () => {
     exportCollection();
   });
+  if (scanBtn) {
+    scanBtn.addEventListener("click", () => {
+      startNativeScan();
+    });
+  }
   importBtn.addEventListener("click", () => {
     promptImportCollection();
   });

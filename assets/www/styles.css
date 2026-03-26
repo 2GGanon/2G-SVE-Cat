@@ -273,6 +273,10 @@ body.sidebar-hidden .layout {
   gap: 0.6rem;
 }
 
+.actions > button {
+  flex: 1 1 9rem;
+}
+
 button,
 .import-label {
   border: 1px solid var(--accent);

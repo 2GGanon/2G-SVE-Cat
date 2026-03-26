@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -34,6 +36,7 @@ class CatalogueWebViewPage extends StatefulWidget {
 
 class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
   late final WebViewController _controller;
+  final ImagePicker _imagePicker = ImagePicker();
   bool _isLoading = true;
 
   Future<Directory> _resolveCatalogueDir() async {
@@ -137,6 +140,63 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
     }
   }
 
+  Future<void> _handleScanCard() async {
+    XFile? imageFile;
+    TextRecognizer? recognizer;
+    try {
+      imageFile = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+        imageQuality: 85,
+      );
+
+      if (imageFile == null) {
+        await _sendJsCallback(
+          '__sveNativeScanResult',
+          {'ok': false, 'cancelled': true, 'error': 'Scan cancelled.'},
+        );
+        return;
+      }
+
+      recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final inputImage = InputImage.fromFilePath(imageFile.path);
+      final recognized = await recognizer.processImage(inputImage);
+      final text = recognized.text.trim();
+
+      if (text.isEmpty) {
+        await _sendJsCallback(
+          '__sveNativeScanResult',
+          {'ok': false, 'error': 'No readable card text was found.'},
+        );
+        return;
+      }
+
+      await _sendJsCallback(
+        '__sveNativeScanResult',
+        {'ok': true, 'recognizedText': text},
+      );
+    } catch (e) {
+      await _sendJsCallback(
+        '__sveNativeScanResult',
+        {'ok': false, 'error': e.toString()},
+      );
+    } finally {
+      if (recognizer != null) {
+        await recognizer.close();
+      }
+      if (imageFile != null) {
+        try {
+          final tempFile = File(imageFile.path);
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
+        } catch (_) {
+          // Leave temp cleanup best-effort only.
+        }
+      }
+    }
+  }
+
   Future<void> _onBridgeMessage(JavaScriptMessage message) async {
     try {
       final parsed = jsonDecode(message.message);
@@ -146,6 +206,8 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
         await _handleExport(parsed);
       } else if (type == 'import_latest') {
         await _handleImportLatest();
+      } else if (type == 'scan_card') {
+        await _handleScanCard();
       } else if (type == 'haptic_feedback') {
         await HapticFeedback.selectionClick();
       }
