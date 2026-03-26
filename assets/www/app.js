@@ -932,6 +932,25 @@ function applyScanMatch(match) {
   );
 }
 
+function adjustCardQuantityByCode(code, delta) {
+  const card = cardByCode.get(code) || cards.find((entry) => entry.code === code);
+  if (!card) return false;
+
+  const wasVisible = matchesActiveFilters(card);
+  const next = ownedFor(card.code) + delta;
+  setOwned(card.code, next);
+  const currentQty = ownedFor(card.code);
+  const isVisible = matchesActiveFilters(card, currentQty);
+
+  if (wasVisible !== isVisible) {
+    renderTable();
+    return true;
+  }
+
+  renderTable();
+  return true;
+}
+
 function startNativeScan() {
   if (scanInFlight) return;
   if (!nativePost({ type: "scan_card" })) {
@@ -998,6 +1017,24 @@ window.__sveNativeScanResult = function __sveNativeScanResult(payloadJson) {
     applyScanMatch(match);
   } catch {
     alert("Scan failed.");
+  }
+};
+
+window.__sveNativeScanSessionClosed = function __sveNativeScanSessionClosed() {
+  setScanBusy(false);
+};
+
+window.__sveNativeAdjustCardQuantity = function __sveNativeAdjustCardQuantity(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    const code = String(payload.code || "");
+    const delta = Number.parseInt(String(payload.delta ?? 0), 10);
+    if (!code || !Number.isFinite(delta) || delta === 0) {
+      return;
+    }
+    adjustCardQuantityByCode(code, delta);
+  } catch {
+    // ignore malformed native quantity updates
   }
 };
 
