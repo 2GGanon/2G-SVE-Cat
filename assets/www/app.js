@@ -662,6 +662,8 @@ let rarityOutliers = [];
 let dualGroupByCode = new Map();
 let appliedSearchText = "";
 let scanInFlight = false;
+let scanCodeAliasMap = new Map();
+let scanNameAliasMap = new Map();
 
 function prPromoSourceByCode(cardCode) {
   const normalized = normalizeCardCode(cardCode);
@@ -733,50 +735,191 @@ function nameScanAlias(name) {
   return normalizeScanText(name);
 }
 
-function findBestScanMatch(recognizedText) {
-  const compact = normalizeScanText(recognizedText);
-  if (!compact) return null;
+function buildScanIndexes() {
+  scanCodeAliasMap = new Map();
+  scanNameAliasMap = new Map();
 
-  const codeMatches = [];
   cards.forEach((card) => {
-    let bestScore = 0;
     codeScanAliases(card.code).forEach((alias) => {
-      if (compact.includes(alias)) {
-        bestScore = Math.max(bestScore, alias.length);
-      }
+      const existing = scanCodeAliasMap.get(alias) || [];
+      existing.push(card);
+      scanCodeAliasMap.set(alias, existing);
     });
-    if (bestScore > 0) {
-      codeMatches.push({ card, score: bestScore });
+
+    const nameAlias = nameScanAlias(card.name);
+    if (nameAlias.length >= 6) {
+      const existing = scanNameAliasMap.get(nameAlias) || [];
+      existing.push(card);
+      scanNameAliasMap.set(nameAlias, existing);
     }
   });
+}
 
-  codeMatches.sort((a, b) => b.score - a.score || a.card.code.localeCompare(b.card.code));
-  if (codeMatches.length && codeMatches[0].score > 0) {
-    const bestScore = codeMatches[0].score;
-    const topMatches = codeMatches.filter((entry) => entry.score === bestScore);
-    if (topMatches.length === 1) {
-      return { card: topMatches[0].card, matchedBy: "code" };
+function looksLikeCardCodeCandidate(value) {
+  return /^[A-Z]{2,6}\d{1,3}[A-Z]?\d*[A-Z0-9]*$/.test(value) || /^[A-Z]{2,6}\d{1,3}$/.test(value);
+}
+
+function applyOcrCodeCorrections(value) {
+  let corrected = String(value || "").toUpperCase();
+  if (!/\d/.test(corrected)) return corrected;
+
+  corrected = corrected
+    .replace(/[OQD]/g, "0")
+    .replace(/[IL]/g, "1")
+    .replace(/Z/g, "2")
+    .replace(/S/g, "5");
+
+  return corrected;
+}
+
+function extractScanCodeCandidates(recognizedText) {
+  const source = String(recognizedText || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[—–−]/g, "-");
+
+  const candidates = new Set();
+  const push = (value) => {
+    const compact = normalizeScanText(value);
+    if (compact.length >= 5) candidates.add(compact);
+  };
+
+  push(source);
+
+  const rawTokens = source
+    .split(/[^A-Z0-9]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  rawTokens.forEach((token) => {
+    push(token);
+    push(applyOcrCodeCorrections(token));
+  });
+
+  for (let i = 0; i < rawTokens.length; i++) {
+    for (let span = 2; span <= 4 && i + span <= rawTokens.length; span++) {
+      const joined = rawTokens.slice(i, i + span).join("");
+      push(joined);
+      push(applyOcrCodeCorrections(joined));
     }
   }
 
-  const nameMatches = [];
-  cards.forEach((card) => {
-    const alias = nameScanAlias(card.name);
-    if (alias.length >= 6 && compact.includes(alias)) {
-      nameMatches.push({ card, score: alias.length });
+  const regex =
+    /\b([A-Z]{2,6}[0OILSQDZ]{1,3}[A-Z]?(?:[- ]?[A-Z]{0,4}[0-9OILSQDZ]{1,4})?(?:[-_ ]?URA)?(?:[-_ ]?EN)?)\b/g;
+  let match;
+  while ((match = regex.exec(source)) !== null) {
+    push(match[1]);
+    push(applyOcrCodeCorrections(match[1]));
+  }
+
+  return [...candidates].filter(looksLikeCardCodeCandidate);
+}
+
+function editDistanceWithinLimit(a, b, limit = 1) {
+  if (a === b) return 0;
+  if (!a || !b) return Math.max(a.length, b.length);
+  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+
+  const prev = new Array(b.length + 1);
+  const curr = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + cost
+      );
+      rowMin = Math.min(rowMin, curr[j]);
+    }
+    if (rowMin > limit) return limit + 1;
+    for (let j = 0; j <= b.length; j++) prev[j] = curr[j];
+  }
+
+  return prev[b.length];
+}
+
+function findCardByCodeCandidates(recognizedText) {
+  const candidates = extractScanCodeCandidates(recognizedText);
+  const directHits = new Map();
+
+  candidates.forEach((candidate) => {
+    const exact = scanCodeAliasMap.get(candidate);
+    if (exact?.length === 1) {
+      directHits.set(exact[0].code, { card: exact[0], score: 1000 + candidate.length });
     }
   });
 
-  nameMatches.sort((a, b) => b.score - a.score || a.card.code.localeCompare(b.card.code));
-  if (nameMatches.length) {
-    const bestScore = nameMatches[0].score;
-    const topMatches = nameMatches.filter((entry) => entry.score === bestScore);
-    if (topMatches.length === 1) {
-      return { card: topMatches[0].card, matchedBy: "name" };
+  if (directHits.size === 1) {
+    return { card: [...directHits.values()][0].card, matchedBy: "code" };
+  }
+
+  const fuzzyHits = [];
+  candidates.forEach((candidate) => {
+    scanCodeAliasMap.forEach((aliasCards, alias) => {
+      if (aliasCards.length !== 1) return;
+      const limit = candidate.length >= 10 ? 2 : 1;
+      const distance = editDistanceWithinLimit(candidate, alias, limit);
+      if (distance <= limit) {
+        fuzzyHits.push({
+          card: aliasCards[0],
+          score: alias.length - distance * 4,
+          distance,
+        });
+      }
+    });
+  });
+
+  fuzzyHits.sort(
+    (a, b) =>
+      b.score - a.score ||
+      a.distance - b.distance ||
+      a.card.code.localeCompare(b.card.code)
+  );
+
+  if (!fuzzyHits.length) return null;
+  const best = fuzzyHits[0];
+  const top = fuzzyHits.filter(
+    (entry) => entry.score === best.score && entry.distance === best.distance
+  );
+  if (top.length === 1) {
+    return { card: top[0].card, matchedBy: top[0].distance === 0 ? "code" : "code (OCR corrected)" };
+  }
+
+  return null;
+}
+
+function findCardByNameCandidates(recognizedText) {
+  const compact = normalizeScanText(recognizedText);
+  if (!compact) return null;
+
+  const exactHits = [];
+  scanNameAliasMap.forEach((aliasCards, alias) => {
+    if (compact.includes(alias)) {
+      aliasCards.forEach((card) => exactHits.push({ card, score: alias.length }));
+    }
+  });
+
+  exactHits.sort((a, b) => b.score - a.score || a.card.code.localeCompare(b.card.code));
+  if (exactHits.length) {
+    const topScore = exactHits[0].score;
+    const top = exactHits.filter((entry) => entry.score === topScore);
+    const uniqueCodes = [...new Map(top.map((entry) => [entry.card.code, entry])).values()];
+    if (uniqueCodes.length === 1) {
+      return { card: uniqueCodes[0].card, matchedBy: "name" };
     }
   }
 
   return null;
+}
+
+function findBestScanMatch(recognizedText) {
+  return findCardByCodeCandidates(recognizedText) || findCardByNameCandidates(recognizedText) || null;
 }
 
 function applyScanMatch(match) {
@@ -1562,6 +1705,7 @@ async function loadCards() {
 
   initDualGroups();
   cardByCode = new Map(cards.map((card) => [card.code, card]));
+  buildScanIndexes();
 
   rarityOutliers = cards.filter((c) => c.rarityOutlier).map((c) => ({
     code: c.code,
