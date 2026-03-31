@@ -40,9 +40,9 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
   late final Future<List<ScannerCardRecord>> _scannerCatalogueFuture;
   bool _isLoading = true;
 
-  Future<Directory> _resolveCatalogueDir() async {
+  Future<Directory> _resolveStorageDir(String folderName) async {
     if (Platform.isAndroid) {
-      final rootPreferred = Directory('/storage/emulated/0/SVE Catalogue');
+      final rootPreferred = Directory('/storage/emulated/0/$folderName');
       try {
         if (!await rootPreferred.exists()) {
           await rootPreferred.create(recursive: true);
@@ -54,7 +54,7 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
 
       final androidScoped = await getExternalStorageDirectory();
       if (androidScoped != null) {
-        final fallbackDir = Directory('${androidScoped.path}/SVE Catalogue');
+        final fallbackDir = Directory('${androidScoped.path}/$folderName');
         if (!await fallbackDir.exists()) {
           await fallbackDir.create(recursive: true);
         }
@@ -63,7 +63,7 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
     }
 
     final base = await getApplicationDocumentsDirectory();
-    final dir = Directory('${base.path}/SVE Catalogue');
+    final dir = Directory('${base.path}/$folderName');
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
@@ -95,7 +95,7 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
         return;
       }
 
-      final dir = await _resolveCatalogueDir();
+      final dir = await _resolveStorageDir('SVE Catalogue');
       final stamp = DateTime.now()
           .toIso8601String()
           .replaceAll(':', '-')
@@ -117,7 +117,7 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
 
   Future<void> _handleImportLatest() async {
     try {
-      final dir = await _resolveCatalogueDir();
+      final dir = await _resolveStorageDir('SVE Catalogue');
       final entries = await dir
           .list()
           .where((e) => e is File && e.path.toLowerCase().endsWith('.json'))
@@ -143,6 +143,37 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
     } catch (e) {
       await _sendJsCallback(
         '__sveNativeImportResult',
+        {'ok': false, 'error': e.toString()},
+      );
+    }
+  }
+
+  Future<void> _handleIncompleteExport(Map<String, dynamic> message) async {
+    try {
+      final textContent = (message['textContent'] ?? '').toString();
+      final requestedFilename = (message['filename'] ?? '').toString().trim();
+      if (textContent.isEmpty) {
+        await _sendJsCallback(
+          '__sveNativeIncompleteExportResult',
+          {'ok': false, 'error': 'Empty incomplete export payload.'},
+        );
+        return;
+      }
+
+      final dir = await _resolveStorageDir('SVE Catalogue Incomplete');
+      final filename = requestedFilename.isEmpty
+          ? '${DateTime.now().toIso8601String().replaceAll(':', '-').replaceAll('.', '-')}.txt'
+          : requestedFilename;
+      final file = File('${dir.path}/$filename');
+      await file.writeAsString(textContent, flush: true);
+
+      await _sendJsCallback(
+        '__sveNativeIncompleteExportResult',
+        {'ok': true, 'path': file.path},
+      );
+    } catch (e) {
+      await _sendJsCallback(
+        '__sveNativeIncompleteExportResult',
         {'ok': false, 'error': e.toString()},
       );
     }
@@ -183,6 +214,8 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
       final type = (parsed['type'] ?? '').toString();
       if (type == 'export_collection') {
         await _handleExport(parsed);
+      } else if (type == 'export_incomplete') {
+        await _handleIncompleteExport(parsed);
       } else if (type == 'import_latest') {
         await _handleImportLatest();
       } else if (type == 'scan_card') {
@@ -388,6 +421,12 @@ class _NativeCardScannerPageState extends State<NativeCardScannerPage> {
     );
   }
 
+  Future<void> _handleCloseScanner() async {
+    await HapticFeedback.selectionClick();
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
   @override
   void dispose() {
     _isDisposed = true;
@@ -432,7 +471,7 @@ class _NativeCardScannerPageState extends State<NativeCardScannerPage> {
               top: 12,
               right: 12,
               child: FilledButton.tonal(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: _handleCloseScanner,
                 child: const Text('Close'),
               ),
             ),
@@ -620,11 +659,21 @@ class ScannerMatch {
     required this.card,
     required this.matchedBy,
     required this.score,
+    this.nameScore = 0,
+    this.codeScore = 0,
+    this.rarityScore = 0,
+    this.fullName = false,
+    this.nameTokenHits = 0,
   });
 
   final ScannerCardRecord card;
   final String matchedBy;
   final int score;
+  final int nameScore;
+  final int codeScore;
+  final int rarityScore;
+  final bool fullName;
+  final int nameTokenHits;
 }
 
 class ScannerMatcher {
@@ -662,35 +711,44 @@ class ScannerMatcher {
 
     void addCandidate(
       ScannerCardRecord card,
-      int score,
-      String reason,
+      ScannerMatch match,
     ) {
       final existing = scored[card.code];
       if (existing == null) {
         scored[card.code] = _ScoredMatcherCandidate(
           card: card,
-          score: score,
-          reasons: {reason},
+          score: match.score,
+          reasons: {match.matchedBy},
+          nameScore: match.nameScore,
+          codeScore: match.codeScore,
+          rarityScore: match.rarityScore,
+          fullName: match.fullName,
+          nameTokenHits: match.nameTokenHits,
         );
         return;
       }
-      existing.score += score;
-      existing.reasons.add(reason);
+      existing.score += match.score;
+      existing.nameScore += match.nameScore;
+      existing.codeScore += match.codeScore;
+      existing.rarityScore += match.rarityScore;
+      existing.fullName = existing.fullName || match.fullName;
+      existing.nameTokenHits += match.nameTokenHits;
+      existing.reasons.add(match.matchedBy);
     }
 
     final fullNameMatches = _findFullNameMatches(compact);
     for (final match in fullNameMatches) {
-      addCandidate(match.card, match.score, 'name');
+      addCandidate(match.card, match);
     }
 
     final tokenMatches = _findNameTokenMatches(recognizedText);
     for (final match in tokenMatches) {
-      addCandidate(match.card, match.score, 'name token');
+      addCandidate(match.card, match);
     }
 
     final codeMatches = _findCardByCodeCandidates(recognizedText);
     for (final match in codeMatches) {
-      addCandidate(match.card, match.score, match.matchedBy);
+      addCandidate(match.card, match);
     }
 
     if (scored.isEmpty) {
@@ -701,6 +759,7 @@ class ScannerMatcher {
       final rarityHint = candidate.card.rarityHint;
       if (rarityHint.isNotEmpty && compact.contains(rarityHint)) {
         candidate.score += 18;
+        candidate.rarityScore += 18;
         candidate.reasons.add('rarity');
       }
     }
@@ -717,10 +776,18 @@ class ScannerMatcher {
     final best = ranked.first;
     final secondScore = ranked.length > 1 ? ranked[1].score : -999;
     final margin = best.score - secondScore;
-    if (best.score < 45) {
+    final hasBalancedEvidence =
+        best.nameScore >= 35 && best.codeScore >= 35;
+    final hasStrongNameOnly =
+        best.fullName && best.nameScore >= 120 && best.nameTokenHits >= 2;
+
+    if (best.score < 55) {
       return null;
     }
     if (ranked.length > 1 && margin < 12) {
+      return null;
+    }
+    if (!hasBalancedEvidence && !hasStrongNameOnly) {
       return null;
     }
 
@@ -729,7 +796,16 @@ class ScannerMatcher {
         : best.reasons.contains('name token')
             ? 'name'
             : best.reasons.first;
-    return ScannerMatch(card: best.card, matchedBy: matchedBy, score: best.score);
+    return ScannerMatch(
+      card: best.card,
+      matchedBy: matchedBy,
+      score: best.score,
+      nameScore: best.nameScore,
+      codeScore: best.codeScore,
+      rarityScore: best.rarityScore,
+      fullName: best.fullName,
+      nameTokenHits: best.nameTokenHits,
+    );
   }
 
   List<ScannerMatch> _findCardByCodeCandidates(String recognizedText) {
@@ -743,6 +819,7 @@ class ScannerMatcher {
           card: exact.first,
           matchedBy: 'code',
           score: 120 + candidate.length,
+          codeScore: 120 + candidate.length,
         );
       }
     }
@@ -763,6 +840,7 @@ class ScannerMatcher {
               card: aliasCards.first,
               matchedBy: distance == 0 ? 'code' : 'code (OCR corrected)',
               score: 70 + alias.length - distance * 6,
+              codeScore: 70 + alias.length - distance * 6,
             ),
           );
         }
@@ -781,7 +859,10 @@ class ScannerMatcher {
           ScannerMatch(
             card: card,
             matchedBy: 'name',
-            score: 180 + alias.length * 2,
+            score: 120 + alias.length,
+            nameScore: 120 + alias.length,
+            fullName: true,
+            nameTokenHits: card.nameTokens.length,
           ),
         );
       }
@@ -799,7 +880,7 @@ class ScannerMatcher {
     for (final token in tokens) {
       final cardsForToken = _nameTokenMap[token];
       if (cardsForToken == null) continue;
-      final tokenScore = token.length * 12;
+      final tokenScore = token.length * 8;
       for (final card in cardsForToken) {
         final existing = scores[card.code];
         if (existing == null) {
@@ -807,9 +888,13 @@ class ScannerMatcher {
             card: card,
             score: tokenScore,
             reasons: {'name token'},
+            nameScore: tokenScore,
+            nameTokenHits: 1,
           );
         } else {
           existing.score += tokenScore;
+          existing.nameScore += tokenScore;
+          existing.nameTokenHits += 1;
           existing.reasons.add('name token');
         }
       }
@@ -822,6 +907,8 @@ class ScannerMatcher {
             card: entry.card,
             matchedBy: 'name token',
             score: entry.score,
+            nameScore: entry.nameScore,
+            nameTokenHits: entry.nameTokenHits,
           ),
         )
         .toList();
@@ -833,11 +920,21 @@ class _ScoredMatcherCandidate {
     required this.card,
     required this.score,
     required this.reasons,
+    this.nameScore = 0,
+    this.codeScore = 0,
+    this.rarityScore = 0,
+    this.fullName = false,
+    this.nameTokenHits = 0,
   });
 
   final ScannerCardRecord card;
   int score;
   final Set<String> reasons;
+  int nameScore;
+  int codeScore;
+  int rarityScore;
+  bool fullName;
+  int nameTokenHits;
 }
 
 String normalizeCardCode(String rawCode) {

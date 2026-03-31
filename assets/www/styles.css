@@ -104,6 +104,7 @@ body {
   display: grid;
   gap: 1rem;
   padding-left: 19.5rem;
+  padding-right: 19.5rem;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -189,7 +190,18 @@ body {
   transition: left 0.25s ease;
 }
 
-body.sidebar-hidden .sidebar-panel {
+.sidebar-toggle-right {
+  left: auto;
+  right: calc(0.75rem + 18.8rem);
+  border-left: 1px solid var(--border) !important;
+  border-right: 0 !important;
+  border-radius: 12px 0 0 12px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  transition: right 0.25s ease;
+}
+
+body.sidebar-hidden #searchSidebar {
   transform: translateX(calc(-100% - 0.75rem));
 }
 
@@ -200,6 +212,26 @@ body.sidebar-hidden .sidebar-toggle {
 
 body.sidebar-hidden .layout {
   padding-left: 1rem;
+}
+
+.actions-panel {
+  left: auto;
+  right: 0.75rem;
+  border-top-left-radius: 0;
+  border-top-right-radius: 14px;
+}
+
+body.actions-sidebar-hidden .actions-panel {
+  transform: translateX(calc(100% + 0.75rem));
+}
+
+body.actions-sidebar-hidden .sidebar-toggle-right {
+  right: 0;
+  border-right: 1px solid var(--border) !important;
+}
+
+body.actions-sidebar-hidden .layout {
+  padding-right: 1rem;
 }
 
 .filters {
@@ -275,6 +307,28 @@ body.sidebar-hidden .layout {
 
 .actions > button {
   flex: 1 1 9rem;
+}
+
+.actions-vertical {
+  align-content: start;
+}
+
+.scan-fab {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  border-radius: 999px;
+  z-index: 720;
+  font-size: 1.3rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 28px rgba(4, 8, 20, 0.55);
 }
 
 button,
@@ -547,6 +601,7 @@ body.zoom-active .zoom-nav {
 
   .layout {
     padding-left: 1rem;
+    padding-right: 1rem;
   }
 
   .sidebar-panel {
@@ -562,8 +617,24 @@ body.zoom-active .zoom-nav {
     left: calc(0.55rem + min(86vw, 18.8rem));
   }
 
+  .actions-panel {
+    right: 0.55rem;
+  }
+
+  .sidebar-toggle-right {
+    right: calc(0.55rem + min(86vw, 18.8rem));
+  }
+
+  .scan-fab {
+    bottom: 0.8rem;
+  }
+
   body.sidebar-hidden .sidebar-toggle {
     left: 0;
+  }
+
+  body.actions-sidebar-hidden .sidebar-toggle-right {
+    right: 0;
   }
 
   .filters {

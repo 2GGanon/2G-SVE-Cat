@@ -615,6 +615,7 @@ const extraOnly = document.getElementById("extraOnly");
 const scanBtn = document.getElementById("scanBtn");
 const exportBtn = document.getElementById("exportBtn");
 const importBtn = document.getElementById("importBtn");
+const exportIncompleteBtn = document.getElementById("exportIncompleteBtn");
 const importInput = document.getElementById("importInput");
 const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
@@ -622,6 +623,7 @@ const legalToggle = document.getElementById("legalToggle");
 const legalText = document.getElementById("legalText");
 
 const sidebarToggle = document.getElementById("sidebarToggle");
+const actionsToggle = document.getElementById("actionsToggle");
 
 const RARITY_LABEL_BY_PREFIX = {
   "": "Base",
@@ -997,6 +999,19 @@ window.__sveNativeImportResult = function __sveNativeImportResult(payloadJson) {
   }
 };
 
+window.__sveNativeIncompleteExportResult = function __sveNativeIncompleteExportResult(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (payload.ok) {
+      alert(`Incomplete list exported to:\n${payload.path}`);
+      return;
+    }
+    alert(`Incomplete export failed: ${payload.error || "Unknown error"}`);
+  } catch {
+    alert("Incomplete export failed.");
+  }
+};
+
 window.__sveNativeScanResult = function __sveNativeScanResult(payloadJson) {
   setScanBusy(false);
   try {
@@ -1314,6 +1329,13 @@ function updateSidebarState() {
   sidebarToggle.title = hidden ? "Show filters" : "Hide filters";
 }
 
+function updateActionsSidebarState() {
+  if (!actionsToggle) return;
+  const hidden = document.body.classList.contains("actions-sidebar-hidden");
+  actionsToggle.setAttribute("aria-expanded", String(!hidden));
+  actionsToggle.title = hidden ? "Show actions" : "Hide actions";
+}
+
 function updateLegalState(expanded) {
   if (!legalToggle || !legalText) return;
   legalToggle.setAttribute("aria-expanded", String(expanded));
@@ -1602,6 +1624,51 @@ async function exportCollection() {
   }
 }
 
+function filteredIncompleteCards() {
+  return filteredCards().filter((card) => ownedFor(card.code) < playsetLimitForCard(card));
+}
+
+function incompleteExportText() {
+  return filteredIncompleteCards()
+    .map((card) => ({
+      setCode: card.setCode,
+      code: card.code,
+      missing: Math.max(0, playsetLimitForCard(card) - ownedFor(card.code)),
+      name: card.name,
+    }))
+    .sort((a, b) => a.setCode.localeCompare(b.setCode) || a.code.localeCompare(b.code))
+    .map((entry) => `${entry.missing}x ${entry.name} (${entry.code})`)
+    .join("\n");
+}
+
+async function exportIncompleteList() {
+  const textContent = incompleteExportText();
+  if (!textContent) {
+    alert("No incomplete cards match the current filters.");
+    return;
+  }
+
+  const proceed = window.confirm(
+    "Export the filtered incomplete list now? This records only the missing copies based on the current filters."
+  );
+  if (!proceed) return;
+
+  const filename = `sve-incomplete-${new Date().toISOString().replace(/[:.]/g, "-")}.txt`;
+
+  if (nativePost({ type: "export_incomplete", textContent, filename })) {
+    return;
+  }
+
+  const blob = new Blob([textContent], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  alert("Incomplete list export started.");
+}
+
 function importCollection(file) {
   const reader = new FileReader();
   reader.onload = () => {
@@ -1791,9 +1858,20 @@ function bindEvents() {
     document.body.classList.toggle("sidebar-hidden");
     updateSidebarState();
   });
+  if (actionsToggle) {
+    actionsToggle.addEventListener("click", () => {
+      document.body.classList.toggle("actions-sidebar-hidden");
+      updateActionsSidebarState();
+    });
+  }
   exportBtn.addEventListener("click", () => {
     exportCollection();
   });
+  if (exportIncompleteBtn) {
+    exportIncompleteBtn.addEventListener("click", () => {
+      exportIncompleteList();
+    });
+  }
   if (scanBtn) {
     scanBtn.addEventListener("click", () => {
       startNativeScan();
@@ -1816,6 +1894,17 @@ function bindEvents() {
     },
     { passive: true }
   );
+  document.body.addEventListener(
+    "pointerdown",
+    (ev) => {
+      if (!document.body.classList.contains("zoom-active")) return;
+      if (!(ev.target instanceof Element)) return;
+      if (ev.target.closest("button")) return;
+      if (ev.target.closest(".card-art.zoomed")) return;
+      closeZoom();
+    },
+    { passive: true }
+  );
 }
 
 async function start() {
@@ -1825,6 +1914,7 @@ async function start() {
   bindEvents();
   updateLegalState(false);
   updateSidebarState();
+  updateActionsSidebarState();
   registerServiceWorker();
   try {
     await loadCards();

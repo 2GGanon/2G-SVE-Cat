@@ -25,6 +25,7 @@
     </header>
 
     <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle search sidebar">&#128269;</button>
+    <button id="actionsToggle" class="sidebar-toggle sidebar-toggle-right" type="button" aria-label="Toggle actions sidebar">&#128214;</button>
     <section id="searchSidebar" class="controls sidebar-panel">
       <div class="filters">
         <label class="control">
@@ -60,10 +61,13 @@
           </label>
         </div>
       </div>
-      <div class="actions">
-        <button id="scanBtn" type="button">Scan Card</button>
+    </section>
+
+    <section id="actionsSidebar" class="controls sidebar-panel actions-panel">
+      <div class="actions actions-vertical">
         <button id="exportBtn" type="button">Export Collection</button>
         <button id="importBtn" type="button">Import Collection</button>
+        <button id="exportIncompleteBtn" type="button">Export Incomplete</button>
         <input id="importInput" type="file" accept=".json" hidden />
       </div>
     </section>
@@ -85,6 +89,8 @@
         </table>
       </section>
     </main>
+
+    <button id="scanBtn" class="scan-fab" type="button" aria-label="Scan card">&#128247;</button>
 
     <template id="rowTemplate">
       <tr>
