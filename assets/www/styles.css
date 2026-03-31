@@ -220,6 +220,7 @@ body.sidebar-hidden .layout {
   right: 0.75rem;
   border-top-left-radius: 0;
   border-top-right-radius: 14px;
+  border-bottom-left-radius: 14px;
 }
 
 body.actions-sidebar-hidden .actions-panel {
@@ -619,10 +620,14 @@ body.zoom-active .zoom-nav {
   }
 
   .actions-panel {
+    left: auto;
     right: 0.55rem;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 0;
   }
 
   .sidebar-toggle-right {
+    left: auto;
     right: calc(0.55rem + min(86vw, 18.8rem));
   }
 
@@ -635,6 +640,7 @@ body.zoom-active .zoom-nav {
   }
 
   body.actions-sidebar-hidden .sidebar-toggle-right {
+    left: auto;
     right: 0;
   }
 
