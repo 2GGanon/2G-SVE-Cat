@@ -21,6 +21,7 @@ body {
   margin: 0;
   font-family: "Trebuchet MS", "Lucida Sans Unicode", sans-serif;
   color: var(--text);
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   background:
     radial-gradient(circle at 85% -10%, #1f3872 0%, transparent 45%),
     radial-gradient(circle at -10% 10%, #24325a 0%, transparent 38%),
@@ -316,7 +317,7 @@ body.actions-sidebar-hidden .layout {
 .scan-fab {
   position: fixed;
   left: 50%;
-  bottom: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   width: 3.25rem;
   height: 3.25rem;
@@ -626,7 +627,7 @@ body.zoom-active .zoom-nav {
   }
 
   .scan-fab {
-    bottom: 0.8rem;
+    bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
   }
 
   body.sidebar-hidden .sidebar-toggle {

@@ -1336,6 +1336,24 @@ function updateActionsSidebarState() {
   actionsToggle.title = hidden ? "Show actions" : "Hide actions";
 }
 
+function setSearchSidebarVisible(visible) {
+  document.body.classList.toggle("sidebar-hidden", !visible);
+  if (visible) {
+    document.body.classList.add("actions-sidebar-hidden");
+  }
+  updateSidebarState();
+  updateActionsSidebarState();
+}
+
+function setActionsSidebarVisible(visible) {
+  document.body.classList.toggle("actions-sidebar-hidden", !visible);
+  if (visible) {
+    document.body.classList.add("sidebar-hidden");
+  }
+  updateSidebarState();
+  updateActionsSidebarState();
+}
+
 function updateLegalState(expanded) {
   if (!legalToggle || !legalText) return;
   legalToggle.setAttribute("aria-expanded", String(expanded));
@@ -1855,13 +1873,13 @@ function bindEvents() {
     });
   }
   sidebarToggle.addEventListener("click", () => {
-    document.body.classList.toggle("sidebar-hidden");
-    updateSidebarState();
+    const willShow = document.body.classList.contains("sidebar-hidden");
+    setSearchSidebarVisible(willShow);
   });
   if (actionsToggle) {
     actionsToggle.addEventListener("click", () => {
-      document.body.classList.toggle("actions-sidebar-hidden");
-      updateActionsSidebarState();
+      const willShow = document.body.classList.contains("actions-sidebar-hidden");
+      setActionsSidebarVisible(willShow);
     });
   }
   exportBtn.addEventListener("click", () => {
@@ -1913,6 +1931,9 @@ async function start() {
   createZoomPromoInfo();
   bindEvents();
   updateLegalState(false);
+  if (!document.body.classList.contains("actions-sidebar-hidden")) {
+    document.body.classList.add("actions-sidebar-hidden");
+  }
   updateSidebarState();
   updateActionsSidebarState();
   registerServiceWorker();
