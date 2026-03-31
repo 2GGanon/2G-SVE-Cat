@@ -173,11 +173,6 @@ body {
   border-top-right-radius: 0;
 }
 
-.sidebar-panel-scroll {
-  overflow: auto;
-  max-height: calc(100vh - 10.3rem);
-}
-
 .sidebar-toggle {
   position: fixed;
   top: 7.6rem;
@@ -224,20 +219,9 @@ body.sidebar-hidden .layout {
 .actions-panel {
   left: auto;
   right: var(--sidebar-gap);
-  overflow: visible;
   border-top-left-radius: 0;
   border-top-right-radius: 14px;
   border-bottom-left-radius: 14px;
-}
-
-.actions-panel .sidebar-panel-scroll {
-  max-height: calc(100vh - 10.3rem);
-}
-
-.actions-panel .sidebar-toggle-right {
-  position: absolute;
-  top: -1px;
-  right: 100%;
 }
 
 body.actions-sidebar-hidden .actions-panel {
@@ -245,7 +229,7 @@ body.actions-sidebar-hidden .actions-panel {
 }
 
 body.actions-sidebar-hidden .sidebar-toggle-right {
-  right: 100%;
+  right: 0;
 }
 
 body.actions-sidebar-hidden .layout {
@@ -648,16 +632,17 @@ body.zoom-active .zoom-nav {
   }
 
   .sidebar-toggle-right {
+    top: 7rem;
     left: auto;
     right: calc(var(--sidebar-gap) + var(--sidebar-width));
   }
 
-  .actions-panel .sidebar-panel-scroll {
-    max-height: calc(100vh - 9.45rem);
-  }
-
   body.sidebar-hidden .sidebar-toggle {
     left: 0;
+  }
+
+  body.actions-sidebar-hidden .sidebar-toggle-right {
+    right: 0;
   }
 
   .scan-fab {
