@@ -24,8 +24,9 @@
       </div>
     </header>
 
+    <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle search sidebar">&#128269;</button>
+
     <section id="searchSidebar" class="controls sidebar-panel">
-      <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle search sidebar">&#128269;</button>
       <div class="filters">
         <label class="control">
           <span>Search</span>
@@ -64,11 +65,13 @@
 
     <section id="actionsSidebar" class="controls sidebar-panel actions-panel">
       <button id="actionsToggle" class="sidebar-toggle sidebar-toggle-right" type="button" aria-label="Toggle actions sidebar">&#128214;</button>
-      <div class="actions actions-vertical">
-        <button id="exportBtn" type="button">Export Collection</button>
-        <button id="importBtn" type="button">Import Collection</button>
-        <button id="exportIncompleteBtn" type="button">Export Incomplete</button>
-        <input id="importInput" type="file" accept=".json" hidden />
+      <div class="sidebar-panel-scroll">
+        <div class="actions actions-vertical">
+          <button id="exportBtn" type="button">Export Collection</button>
+          <button id="importBtn" type="button">Import Collection</button>
+          <button id="exportIncompleteBtn" type="button">Export Incomplete</button>
+          <input id="importInput" type="file" accept=".json" hidden />
+        </div>
       </div>
     </section>
 

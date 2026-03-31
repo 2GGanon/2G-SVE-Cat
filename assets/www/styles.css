@@ -173,11 +173,15 @@ body {
   border-top-right-radius: 0;
 }
 
+.sidebar-panel-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 10.3rem);
+}
+
 .sidebar-toggle {
-  position: absolute;
-  top: 0;
-  left: 100%;
-  transform: none;
+  position: fixed;
+  top: 7.6rem;
+  left: calc(var(--sidebar-gap) + var(--sidebar-width));
   width: var(--sidebar-tab-width);
   height: 2.8rem;
   border-radius: 0 12px 12px 0;
@@ -191,22 +195,26 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  transition: none;
+  transition: left 0.25s ease, right 0.25s ease;
 }
 
 .sidebar-toggle-right {
   left: auto;
-  right: 100%;
+  right: calc(var(--sidebar-gap) + var(--sidebar-width));
   border-left: 1px solid var(--border) !important;
   border-right: 0 !important;
   border-radius: 12px 0 0 12px;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
-  transition: none;
+  transition: left 0.25s ease, right 0.25s ease;
 }
 
 body.sidebar-hidden #searchSidebar {
   transform: translateX(calc(-100% - var(--sidebar-gap)));
+}
+
+body.sidebar-hidden .sidebar-toggle {
+  left: 0;
 }
 
 body.sidebar-hidden .layout {
@@ -216,13 +224,28 @@ body.sidebar-hidden .layout {
 .actions-panel {
   left: auto;
   right: var(--sidebar-gap);
+  overflow: visible;
   border-top-left-radius: 0;
   border-top-right-radius: 14px;
   border-bottom-left-radius: 14px;
 }
 
+.actions-panel .sidebar-panel-scroll {
+  max-height: calc(100vh - 10.3rem);
+}
+
+.actions-panel .sidebar-toggle-right {
+  position: absolute;
+  top: -1px;
+  right: 100%;
+}
+
 body.actions-sidebar-hidden .actions-panel {
   transform: translateX(calc(100% + var(--sidebar-gap)));
+}
+
+body.actions-sidebar-hidden .sidebar-toggle-right {
+  right: 100%;
 }
 
 body.actions-sidebar-hidden .layout {
@@ -613,8 +636,8 @@ body.zoom-active .zoom-nav {
   }
 
   .sidebar-toggle {
-    top: 0;
-    left: 100%;
+    top: 7rem;
+    left: calc(var(--sidebar-gap) + var(--sidebar-width));
   }
 
   .actions-panel {
@@ -626,7 +649,15 @@ body.zoom-active .zoom-nav {
 
   .sidebar-toggle-right {
     left: auto;
-    right: 100%;
+    right: calc(var(--sidebar-gap) + var(--sidebar-width));
+  }
+
+  .actions-panel .sidebar-panel-scroll {
+    max-height: calc(100vh - 9.45rem);
+  }
+
+  body.sidebar-hidden .sidebar-toggle {
+    left: 0;
   }
 
   .scan-fab {
