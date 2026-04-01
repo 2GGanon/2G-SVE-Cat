@@ -23,6 +23,15 @@ const DUAL_SIDE_GROUPS = [
   ["BP09-P12EN", "BP09-P12EN_URA"],
 ];
 const ONE_COPY_SET_CODES = new Set(["GFB01A", "GFB01B", "GFB01C", "GFB01D", "GFD01", "GFD02"]);
+const CLASS_FILTER_ORDER = [
+  "Forestcraft",
+  "Swordcraft",
+  "Runecraft",
+  "Dragoncraft",
+  "Abysscraft",
+  "Havencraft",
+  "Neutral",
+];
 const MISSING_FRONT_CARD_OVERRIDES = [
   { code: "BP08-SL03EN", name: "Orchis, Resolute Puppet", isEvolved: true },
   { code: "BP09-SL20EN", name: "Vania, Kind Queen", isEvolved: false },
@@ -608,6 +617,13 @@ function initDualGroups() {
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const setFilter = document.getElementById("setFilter");
+const classFilter = document.getElementById("classFilter");
+const traitFilter = document.getElementById("traitFilter");
+const cardTypeFilter = document.getElementById("cardTypeFilter");
+const cardCostFilter = document.getElementById("cardCostFilter");
+const attackFilter = document.getElementById("attackFilter");
+const defenseFilter = document.getElementById("defenseFilter");
+const artistFilter = document.getElementById("artistFilter");
 const rarityFilterGroup = document.getElementById("rarityFilterGroup");
 const ownedOnly = document.getElementById("ownedOnly");
 const incompleteOnly = document.getElementById("incompleteOnly");
@@ -1218,6 +1234,20 @@ function parseCsv(csvText) {
   return data;
 }
 
+function parseTraits(rawTraits) {
+  return String(rawTraits || "")
+    .split("|")
+    .map((trait) => trait.trim())
+    .filter(Boolean);
+}
+
+function parseCardTypes(rawCardType) {
+  return String(rawCardType || "")
+    .split("/")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function saveCollection() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
 }
@@ -1253,6 +1283,106 @@ function populateSetFilter() {
   if (sets.includes("BP01")) {
     setFilter.value = "BP01";
   }
+}
+
+function populateClassFilter() {
+  if (!classFilter) return;
+  const discovered = new Set(cards.map((c) => c.className).filter(Boolean));
+  const classNames = [
+    ...CLASS_FILTER_ORDER.filter((className) => discovered.has(className)),
+    ...[...discovered].filter((className) => !CLASS_FILTER_ORDER.includes(className)).sort((a, b) => a.localeCompare(b)),
+  ];
+  classFilter.innerHTML = '<option value="">All</option>';
+  classNames.forEach((className) => {
+    const opt = document.createElement("option");
+    opt.value = className;
+    opt.textContent = className;
+    classFilter.appendChild(opt);
+  });
+}
+
+function populateTraitFilter() {
+  if (!traitFilter) return;
+  const traits = [...new Set(cards.flatMap((c) => c.traits || []).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b)
+  );
+  traitFilter.innerHTML = '<option value="">All</option>';
+  traits.forEach((trait) => {
+    const opt = document.createElement("option");
+    opt.value = trait;
+    opt.textContent = trait;
+    traitFilter.appendChild(opt);
+  });
+}
+
+function populateCardTypeFilter() {
+  if (!cardTypeFilter) return;
+  const cardTypes = [...new Set(cards.flatMap((c) => c.cardTypes || []).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b)
+  );
+  cardTypeFilter.innerHTML = '<option value="">All</option>';
+  cardTypes.forEach((cardType) => {
+    const opt = document.createElement("option");
+    opt.value = cardType;
+    opt.textContent = cardType;
+    cardTypeFilter.appendChild(opt);
+  });
+}
+
+function sortStatValues(values) {
+  return values.sort((a, b) => {
+    const aNum = Number(a);
+    const bNum = Number(b);
+    const aNumeric = !Number.isNaN(aNum);
+    const bNumeric = !Number.isNaN(bNum);
+    if (aNumeric && bNumeric) return aNum - bNum;
+    if (aNumeric) return -1;
+    if (bNumeric) return 1;
+    return a.localeCompare(b);
+  });
+}
+
+function populateStatFilter(selectEl, values, emptyLabel) {
+  if (!selectEl) return;
+  selectEl.innerHTML = `<option value="">${emptyLabel}</option>`;
+  sortStatValues(values.filter(Boolean)).forEach((value) => {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = value;
+    selectEl.appendChild(opt);
+  });
+}
+
+function populateStatFilters() {
+  populateStatFilter(
+    cardCostFilter,
+    [...new Set(cards.map((c) => c.cardCost).filter((value) => value && value !== "-"))],
+    "All"
+  );
+  populateStatFilter(
+    attackFilter,
+    [...new Set(cards.map((c) => c.attack).filter((value) => value && value !== "-"))],
+    "All"
+  );
+  populateStatFilter(
+    defenseFilter,
+    [...new Set(cards.map((c) => c.defense).filter((value) => value && value !== "-"))],
+    "All"
+  );
+}
+
+function populateArtistFilter() {
+  if (!artistFilter) return;
+  const artists = [...new Set(cards.map((c) => c.artist).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b)
+  );
+  artistFilter.innerHTML = '<option value="">All artists</option>';
+  artists.forEach((artist) => {
+    const opt = document.createElement("option");
+    opt.value = artist;
+    opt.textContent = artist;
+    artistFilter.appendChild(opt);
+  });
 }
 
 function populateRarityFilter() {
@@ -1292,6 +1422,13 @@ function selectedRarities() {
 function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   const text = appliedSearchText;
   const set = setFilter.value;
+  const className = classFilter ? classFilter.value : "";
+  const trait = traitFilter ? traitFilter.value : "";
+  const cardType = cardTypeFilter ? cardTypeFilter.value : "";
+  const cardCost = cardCostFilter ? cardCostFilter.value : "";
+  const attack = attackFilter ? attackFilter.value : "";
+  const defense = defenseFilter ? defenseFilter.value : "";
+  const artist = artistFilter ? artistFilter.value : "";
   const selected = selectedRarities();
   const requireOwned = ownedOnly.checked;
   const requireIncomplete = incompleteOnly.checked;
@@ -1299,6 +1436,13 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   const playsetLimit = playsetLimitForCard(card);
 
   if (set && card.setCode !== set) return false;
+  if (className && card.className !== className) return false;
+  if (trait && !(card.traits || []).includes(trait)) return false;
+  if (cardType && !(card.cardTypes || []).includes(cardType)) return false;
+  if (cardCost && card.cardCost !== cardCost) return false;
+  if (attack && card.attack !== attack) return false;
+  if (defense && card.defense !== defense) return false;
+  if (artist && card.artist !== artist) return false;
   if (selected.size > 0 && !selected.has(card.rarity)) return false;
   if (requireOwned && qty === 0) return false;
   if (requireIncomplete && qty >= playsetLimit) return false;
@@ -1759,6 +1903,13 @@ async function loadCards() {
     return {
       name: r["Card Name"],
       code: rawCode,
+      className: r["Class"] || "",
+      traits: parseTraits(r["Traits"]),
+      cardTypes: parseCardTypes(r["Card Type"]),
+      cardCost: r["Card Cost"] || "",
+      attack: r["Attack"] || "",
+      defense: r["Defense"] || "",
+      artist: r["Artist"] || "Uncredited",
       promoSource: r["Promo Obtain Source (if PR in code)"] || "",
       artUrl: r["Art URL"] || "",
       setCode: setCodeFromCardCode(rawCode),
@@ -1793,6 +1944,13 @@ async function loadCards() {
     insertMissingCardByCodeOrder({
       name: entry.name,
       code: entry.code,
+      className: "",
+      traits: [],
+      cardTypes: [],
+      cardCost: "",
+      attack: "",
+      defense: "",
+      artist: "Uncredited",
       promoSource: "",
       artUrl: "",
       setCode: setCodeFromCardCode(entry.code),
@@ -1809,6 +1967,13 @@ async function loadCards() {
     const bp08003 = {
       name: "Orchis, Resolute Puppet",
       code: "BP08-003EN",
+      className: "",
+      traits: [],
+      cardTypes: [],
+      cardCost: "",
+      attack: "",
+      defense: "",
+      artist: "Uncredited",
       promoSource: "",
       artUrl: "",
       setCode: "BP08",
@@ -1863,6 +2028,13 @@ function bindEvents() {
     renderTable();
   });
   setFilter.addEventListener("change", renderTable);
+  if (classFilter) classFilter.addEventListener("change", renderTable);
+  if (traitFilter) traitFilter.addEventListener("change", renderTable);
+  if (cardTypeFilter) cardTypeFilter.addEventListener("change", renderTable);
+  if (cardCostFilter) cardCostFilter.addEventListener("change", renderTable);
+  if (attackFilter) attackFilter.addEventListener("change", renderTable);
+  if (defenseFilter) defenseFilter.addEventListener("change", renderTable);
+  if (artistFilter) artistFilter.addEventListener("change", renderTable);
   ownedOnly.addEventListener("change", renderTable);
   incompleteOnly.addEventListener("change", renderTable);
   extraOnly.addEventListener("change", renderTable);
@@ -1939,8 +2111,13 @@ async function start() {
   registerServiceWorker();
   try {
     await loadCards();
-    populateSetFilter();
-    populateRarityFilter();
+  populateSetFilter();
+  populateClassFilter();
+  populateTraitFilter();
+  populateCardTypeFilter();
+  populateStatFilters();
+  populateArtistFilter();
+  populateRarityFilter();
     renderTable();
     if (rarityOutliers.length) {
       console.warn("Rarity outliers detected and left uncategorized:", rarityOutliers);

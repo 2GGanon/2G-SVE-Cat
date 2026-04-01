@@ -283,6 +283,46 @@ body.actions-sidebar-hidden .layout {
   color: var(--text);
 }
 
+.stat-filter-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.42rem;
+  align-items: end;
+}
+
+.triple-filter-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.42rem;
+  align-items: end;
+}
+
+.stat-control {
+  min-width: 0;
+}
+
+.compact-control {
+  min-width: 0;
+}
+
+.stat-control span {
+  font-size: 0.76rem;
+}
+
+.compact-control span {
+  font-size: 0.76rem;
+}
+
+.stat-control select {
+  padding: 0.42rem 0.35rem;
+  font-size: 0.82rem;
+}
+
+.compact-control select {
+  padding: 0.42rem 0.35rem;
+  font-size: 0.82rem;
+}
+
 .search-apply-btn {
   width: 100%;
 }
@@ -672,6 +712,32 @@ body.zoom-active .zoom-nav {
 
   .filters {
     grid-template-columns: 1fr;
+  }
+
+  .stat-filter-row {
+    gap: 0.35rem;
+  }
+
+  .triple-filter-row {
+    gap: 0.35rem;
+  }
+
+  .stat-control span {
+    font-size: 0.72rem;
+  }
+
+  .compact-control span {
+    font-size: 0.72rem;
+  }
+
+  .stat-control select {
+    padding: 0.38rem 0.28rem;
+    font-size: 0.78rem;
+  }
+
+  .compact-control select {
+    padding: 0.38rem 0.28rem;
+    font-size: 0.78rem;
   }
 
   .filter-toggles {

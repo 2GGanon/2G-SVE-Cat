@@ -608,6 +608,13 @@ class ScannerCardRecord {
     required this.normalizedName,
     required this.nameTokens,
     required this.rarityHint,
+    required this.traits,
+    required this.cardTypes,
+    required this.cardCost,
+    required this.attack,
+    required this.defense,
+    required this.hasEvolvedMarker,
+    required this.hasAdvancedMarker,
   });
 
   final String name;
@@ -617,6 +624,13 @@ class ScannerCardRecord {
   final String normalizedName;
   final List<String> nameTokens;
   final String rarityHint;
+  final List<String> traits;
+  final List<String> cardTypes;
+  final String cardCost;
+  final String attack;
+  final String defense;
+  final bool hasEvolvedMarker;
+  final bool hasAdvancedMarker;
 
   factory ScannerCardRecord.fromCsvRow(Map<String, String> row) {
     final code = (row['Card Code'] ?? '').trim();
@@ -641,6 +655,17 @@ class ScannerCardRecord {
       normalizedName: normalizeScanText(name),
       nameTokens: tokenizeNameForScan(name),
       rarityHint: rarityHintFromCardCode(code),
+      traits: parsePipeSeparatedList(row['Traits']),
+      cardTypes: parseSlashSeparatedList(row['Card Type']),
+      cardCost: (row['Card Cost'] ?? '').trim(),
+      attack: (row['Attack'] ?? '').trim(),
+      defense: (row['Defense'] ?? '').trim(),
+      hasEvolvedMarker: parseSlashSeparatedList(row['Card Type']).any(
+        (value) => value.toUpperCase() == 'EVOLVED',
+      ),
+      hasAdvancedMarker: parseSlashSeparatedList(row['Card Type']).any(
+        (value) => value.toUpperCase() == 'ADVANCED',
+      ),
     );
   }
 
@@ -662,6 +687,7 @@ class ScannerMatch {
     this.nameScore = 0,
     this.codeScore = 0,
     this.rarityScore = 0,
+    this.metadataScore = 0,
     this.fullName = false,
     this.nameTokenHits = 0,
   });
@@ -672,6 +698,7 @@ class ScannerMatch {
   final int nameScore;
   final int codeScore;
   final int rarityScore;
+  final int metadataScore;
   final bool fullName;
   final int nameTokenHits;
 }
@@ -685,6 +712,11 @@ class ScannerMatcher {
   final Map<String, List<ScannerCardRecord>> _codeAliasMap = {};
   final Map<String, List<ScannerCardRecord>> _nameAliasMap = {};
   final Map<String, List<ScannerCardRecord>> _nameTokenMap = {};
+  final Map<String, List<ScannerCardRecord>> _traitPhraseMap = {};
+  final Map<String, List<ScannerCardRecord>> _cardTypePhraseMap = {};
+  final Map<String, List<ScannerCardRecord>> _costMap = {};
+  final Map<String, List<ScannerCardRecord>> _attackMap = {};
+  final Map<String, List<ScannerCardRecord>> _defenseMap = {};
 
   void _buildIndexes() {
     for (final card in cards) {
@@ -697,6 +729,27 @@ class ScannerMatcher {
       }
       for (final token in card.nameTokens) {
         _nameTokenMap.putIfAbsent(token, () => <ScannerCardRecord>[]).add(card);
+      }
+      for (final trait in card.traits) {
+        final phrase = normalizeHintPhrase(trait);
+        if (phrase.isNotEmpty) {
+          _traitPhraseMap.putIfAbsent(phrase, () => <ScannerCardRecord>[]).add(card);
+        }
+      }
+      for (final cardType in card.cardTypes) {
+        final phrase = normalizeHintPhrase(cardType);
+        if (phrase.isNotEmpty) {
+          _cardTypePhraseMap.putIfAbsent(phrase, () => <ScannerCardRecord>[]).add(card);
+        }
+      }
+      if (card.cardCost.isNotEmpty && card.cardCost != '-') {
+        _costMap.putIfAbsent(card.cardCost, () => <ScannerCardRecord>[]).add(card);
+      }
+      if (card.attack.isNotEmpty && card.attack != '-') {
+        _attackMap.putIfAbsent(card.attack, () => <ScannerCardRecord>[]).add(card);
+      }
+      if (card.defense.isNotEmpty && card.defense != '-') {
+        _defenseMap.putIfAbsent(card.defense, () => <ScannerCardRecord>[]).add(card);
       }
     }
   }
@@ -722,6 +775,7 @@ class ScannerMatcher {
           nameScore: match.nameScore,
           codeScore: match.codeScore,
           rarityScore: match.rarityScore,
+          metadataScore: match.metadataScore,
           fullName: match.fullName,
           nameTokenHits: match.nameTokenHits,
         );
@@ -731,6 +785,7 @@ class ScannerMatcher {
       existing.nameScore += match.nameScore;
       existing.codeScore += match.codeScore;
       existing.rarityScore += match.rarityScore;
+      existing.metadataScore += match.metadataScore;
       existing.fullName = existing.fullName || match.fullName;
       existing.nameTokenHits += match.nameTokenHits;
       existing.reasons.add(match.matchedBy);
@@ -748,6 +803,11 @@ class ScannerMatcher {
 
     final codeMatches = _findCardByCodeCandidates(recognizedText);
     for (final match in codeMatches) {
+      addCandidate(match.card, match);
+    }
+
+    final metadataMatches = _findMetadataMatches(recognizedText);
+    for (final match in metadataMatches) {
       addCandidate(match.card, match);
     }
 
@@ -803,6 +863,7 @@ class ScannerMatcher {
       nameScore: best.nameScore,
       codeScore: best.codeScore,
       rarityScore: best.rarityScore,
+      metadataScore: best.metadataScore,
       fullName: best.fullName,
       nameTokenHits: best.nameTokenHits,
     );
@@ -913,6 +974,94 @@ class ScannerMatcher {
         )
         .toList();
   }
+
+  List<ScannerMatch> _findMetadataMatches(String recognizedText) {
+    final looseText = normalizeLooseScanText(recognizedText);
+    final numberTokens = extractNumericTokens(recognizedText);
+    if (looseText.isEmpty && numberTokens.isEmpty) {
+      return const [];
+    }
+
+    final scores = <String, _ScoredMatcherCandidate>{};
+
+    void addMetadata(ScannerCardRecord card, String reason, int points) {
+      final existing = scores[card.code];
+      if (existing == null) {
+        scores[card.code] = _ScoredMatcherCandidate(
+          card: card,
+          score: points,
+          reasons: {reason},
+          metadataScore: points,
+        );
+      } else {
+        existing.score += points;
+        existing.metadataScore += points;
+        existing.reasons.add(reason);
+      }
+    }
+
+    for (final cost in numberTokens) {
+      final costCards = _costMap[cost];
+      if (costCards != null) {
+        for (final card in costCards) {
+          addMetadata(card, 'cost', 8);
+        }
+      }
+      final attackCards = _attackMap[cost];
+      if (attackCards != null) {
+        for (final card in attackCards) {
+          addMetadata(card, 'attack', 8);
+        }
+      }
+      final defenseCards = _defenseMap[cost];
+      if (defenseCards != null) {
+        for (final card in defenseCards) {
+          addMetadata(card, 'defense', 8);
+        }
+      }
+    }
+
+    for (final entry in _traitPhraseMap.entries) {
+      if (!containsHintPhrase(looseText, entry.key)) continue;
+      final bonus = entry.key.contains(' ') ? 18 : 14;
+      for (final card in entry.value) {
+        addMetadata(card, 'trait', bonus);
+      }
+    }
+
+    for (final entry in _cardTypePhraseMap.entries) {
+      if (!containsHintPhrase(looseText, entry.key)) continue;
+      final upper = entry.key.toUpperCase();
+      final bonus = upper == 'EVOLVED' || upper == 'ADVANCED' ? 28 : 12;
+      for (final card in entry.value) {
+        addMetadata(card, 'type', bonus);
+      }
+    }
+
+    if (containsHintPhrase(looseText, 'EVOLVED')) {
+      for (final card in cards.where((c) => c.hasEvolvedMarker)) {
+        addMetadata(card, 'evolved', 24);
+      }
+    }
+
+    if (containsHintPhrase(looseText, 'ADVANCED')) {
+      for (final card in cards.where((c) => c.hasAdvancedMarker)) {
+        addMetadata(card, 'advanced', 24);
+      }
+    }
+
+    return scores.values
+        .where((entry) => entry.metadataScore >= 12)
+        .map(
+          (entry) => ScannerMatch(
+            card: entry.card,
+            matchedBy: 'metadata',
+            score: entry.score,
+            metadataScore: entry.metadataScore,
+          ),
+        )
+        .toList();
+  }
 }
 
 class _ScoredMatcherCandidate {
@@ -923,6 +1072,7 @@ class _ScoredMatcherCandidate {
     this.nameScore = 0,
     this.codeScore = 0,
     this.rarityScore = 0,
+    this.metadataScore = 0,
     this.fullName = false,
     this.nameTokenHits = 0,
   });
@@ -933,8 +1083,25 @@ class _ScoredMatcherCandidate {
   int nameScore;
   int codeScore;
   int rarityScore;
+  int metadataScore;
   bool fullName;
   int nameTokenHits;
+}
+
+List<String> parsePipeSeparatedList(String? value) {
+  return (value ?? '')
+      .split('|')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
+}
+
+List<String> parseSlashSeparatedList(String? value) {
+  return (value ?? '')
+      .split('/')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
 }
 
 String normalizeCardCode(String rawCode) {
@@ -958,6 +1125,31 @@ String normalizeScanText(String value) {
       .toUpperCase()
       .replaceAll(RegExp(r'[^A-Z0-9]'), '');
   return normalized;
+}
+
+String normalizeLooseScanText(String value) {
+  return value
+      .toUpperCase()
+      .replaceAll(RegExp(r'[^A-Z0-9]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+}
+
+String normalizeHintPhrase(String value) => normalizeLooseScanText(value);
+
+bool containsHintPhrase(String haystack, String phrase) {
+  if (haystack.isEmpty || phrase.isEmpty) return false;
+  final paddedHaystack = ' $haystack ';
+  final paddedPhrase = ' $phrase ';
+  return paddedHaystack.contains(paddedPhrase);
+}
+
+Set<String> extractNumericTokens(String recognizedText) {
+  return RegExp(r'\b\d+\b')
+      .allMatches(recognizedText)
+      .map((match) => match.group(0) ?? '')
+      .where((value) => value.isNotEmpty)
+      .toSet();
 }
 
 List<String> tokenizeNameForScan(String value) {
