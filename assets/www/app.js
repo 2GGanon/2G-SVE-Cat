@@ -669,6 +669,15 @@ const RARITY_SORT_ORDER = [
   "Uncategorized",
 ];
 
+const RARITY_FILTER_GROUP_ORDER = [
+  "Base",
+  "High",
+  "Leader",
+  "Promo",
+  "Token",
+  "Evo Point",
+];
+
 let cards = [];
 let cardByCode = new Map();
 let collection = {};
@@ -1386,26 +1395,21 @@ function populateArtistFilter() {
 }
 
 function populateRarityFilter() {
-  const rarities = [...new Set(cards.map((c) => c.rarity))].sort((a, b) => {
-    const aIdx = RARITY_SORT_ORDER.indexOf(a);
-    const bIdx = RARITY_SORT_ORDER.indexOf(b);
-    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-    if (aIdx !== -1) return -1;
-    if (bIdx !== -1) return 1;
-    return a.localeCompare(b);
-  });
+  const rarityGroups = RARITY_FILTER_GROUP_ORDER.filter((group) =>
+    cards.some((card) => rarityFilterBucket(card.rarity) === group)
+  );
 
   rarityFilterGroup.innerHTML = "";
-  rarities.forEach((rarity) => {
+  rarityGroups.forEach((rarityGroup) => {
     const label = document.createElement("label");
     label.className = "rarity-option";
     const input = document.createElement("input");
     input.type = "checkbox";
-    input.value = rarity;
+    input.value = rarityGroup;
     input.checked = true;
     input.addEventListener("change", renderTable);
     const text = document.createElement("span");
-    text.textContent = rarity;
+    text.textContent = rarityGroup;
     label.appendChild(input);
     label.appendChild(text);
     rarityFilterGroup.appendChild(label);
@@ -1443,7 +1447,7 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   if (attack && card.attack !== attack) return false;
   if (defense && card.defense !== defense) return false;
   if (artist && card.artist !== artist) return false;
-  if (selected.size > 0 && !selected.has(card.rarity)) return false;
+  if (selected.size > 0 && !selected.has(rarityFilterBucket(card.rarity))) return false;
   if (requireOwned && qty === 0) return false;
   if (requireIncomplete && qty >= playsetLimit) return false;
   if (requireExtra && qty <= playsetLimit) return false;
@@ -1471,6 +1475,29 @@ function updateSidebarState() {
   const hidden = document.body.classList.contains("sidebar-hidden");
   sidebarToggle.setAttribute("aria-expanded", String(!hidden));
   sidebarToggle.title = hidden ? "Show filters" : "Hide filters";
+}
+
+function rarityFilterBucket(rarity) {
+  switch (String(rarity || "")) {
+    case "Premium":
+    case "Super Legendary":
+    case "Ultimate":
+    case "Special":
+    case "Super Special":
+      return "High";
+    case "Leader":
+      return "Leader";
+    case "Promo":
+      return "Promo";
+    case "Token":
+      return "Token";
+    case "Evo Point":
+      return "Evo Point";
+    case "Base":
+    case "Uncategorized":
+    default:
+      return "Base";
+  }
 }
 
 function updateActionsSidebarState() {

@@ -348,7 +348,8 @@ body.actions-sidebar-hidden .layout {
   background: #0f1b34;
   padding: 0.32rem 0.38rem;
   display: grid;
-  gap: 0.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.6rem;
 }
 
 .rarity-option {
@@ -357,6 +358,7 @@ body.actions-sidebar-hidden .layout {
   gap: 0.35rem;
   font-size: 0.84rem;
   color: #d8e4ff;
+  min-width: 0;
 }
 
 .checkbox {
@@ -389,7 +391,7 @@ body.actions-sidebar-hidden .layout {
 .scan-fab {
   position: fixed;
   left: 50%;
-  bottom: calc(-2.15rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(clamp(-2.35rem, -5.2vh, -1.1rem) + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   width: 3.25rem;
   height: 3.25rem;
@@ -720,7 +722,7 @@ body.zoom-active .zoom-nav {
   }
 
   .scan-fab {
-    bottom: calc(-2.35rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(clamp(-2.55rem, -5.8vh, -1.25rem) + env(safe-area-inset-bottom, 0px));
   }
 
   .filters {

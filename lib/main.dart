@@ -295,6 +295,8 @@ class _NativeCardScannerPageState extends State<NativeCardScannerPage> {
   String _pendingCode = '';
   int _pendingHits = 0;
   int _noMatchFrames = 0;
+  Offset? _focusIndicatorPosition;
+  Timer? _focusIndicatorTimer;
 
   @override
   void initState() {
@@ -427,9 +429,59 @@ class _NativeCardScannerPageState extends State<NativeCardScannerPage> {
     Navigator.of(context).pop();
   }
 
+  Future<void> _handlePreviewTap(
+    TapUpDetails details,
+    BoxConstraints constraints,
+  ) async {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    final width = constraints.maxWidth;
+    final height = constraints.maxHeight;
+    if (width <= 0 || height <= 0) return;
+
+    final local = details.localPosition;
+    final normalized = Offset(
+      (local.dx / width).clamp(0.0, 1.0),
+      (local.dy / height).clamp(0.0, 1.0),
+    );
+
+    _focusIndicatorTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _focusIndicatorPosition = local;
+      });
+    }
+    _focusIndicatorTimer = Timer(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      setState(() {
+        _focusIndicatorPosition = null;
+      });
+    });
+
+    try {
+      await controller.setFocusPoint(normalized);
+    } catch (_) {
+      // Best effort; device/backend may ignore manual focus points.
+    }
+
+    try {
+      await controller.setExposurePoint(normalized);
+    } catch (_) {
+      // Best effort; device/backend may ignore manual exposure points.
+    }
+
+    try {
+      await HapticFeedback.selectionClick();
+    } catch (_) {
+      // Ignore unsupported haptics.
+    }
+  }
+
   @override
   void dispose() {
     _isDisposed = true;
+    _focusIndicatorTimer?.cancel();
     final controller = _cameraController;
     if (controller != null) {
       unawaited(controller.stopImageStream().catchError((_) {}));
@@ -450,22 +502,56 @@ class _NativeCardScannerPageState extends State<NativeCardScannerPage> {
         child: Stack(
           children: [
             Positioned.fill(
-              child: controller != null && controller.value.isInitialized
-                  ? CameraPreview(controller)
-                  : Container(
-                      color: Colors.black,
-                      alignment: Alignment.center,
-                      child: _isInitializing
-                          ? const CircularProgressIndicator()
-                          : Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                _statusText,
-                                style: const TextStyle(color: Colors.white),
-                                textAlign: TextAlign.center,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: controller != null && controller.value.isInitialized
+                        ? (details) => _handlePreviewTap(details, constraints)
+                        : null,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: controller != null && controller.value.isInitialized
+                              ? CameraPreview(controller)
+                              : Container(
+                                  color: Colors.black,
+                                  alignment: Alignment.center,
+                                  child: _isInitializing
+                                      ? const CircularProgressIndicator()
+                                      : Padding(
+                                          padding: const EdgeInsets.all(24),
+                                          child: Text(
+                                            _statusText,
+                                            style: const TextStyle(color: Colors.white),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                ),
+                        ),
+                        if (_focusIndicatorPosition != null)
+                          Positioned(
+                            left: _focusIndicatorPosition!.dx - 24,
+                            top: _focusIndicatorPosition!.dy - 24,
+                            child: IgnorePointer(
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFFC7D8FF),
+                                    width: 2,
+                                  ),
+                                ),
                               ),
                             ),
+                          ),
+                      ],
                     ),
+                  );
+                },
+              ),
             ),
             Positioned(
               top: 12,
