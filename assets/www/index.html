@@ -9,18 +9,19 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div id="legalBackdrop" class="legal-backdrop hidden"></div>
     <header class="app-header">
       <div class="header-left">
         <h1><span>GG Catalogue:</span><span>Unofficial SVE Catalogue</span></h1>
       </div>
       <div class="header-right">
-        <img class="header-art" src="./assets/2G.avif" alt="2G icon" />
         <div class="legal-wrap">
           <button id="legalToggle" class="legal-toggle" type="button" aria-expanded="false">Legal Notice</button>
-          <p id="legalText" class="legal-text hidden">
+          <p id="legalText" class="legal-text hidden" role="dialog" aria-modal="true">
             The literal and graphical information presented in this app regarding the Shadowverse Evolve trading card game, including card images and text, is copyright Cygames, Inc and Bushiroad, Inc. This app is not produced by, endorsed by, supported by, or affiliated with Cygames, Inc or Bushiroad, Inc.
           </p>
         </div>
+        <img class="header-art" src="./assets/2G.avif" alt="2G icon" />
       </div>
     </header>
 
@@ -142,7 +143,14 @@
       </section>
     </main>
 
-    <button id="scanBtn" class="scan-fab" type="button" aria-label="Scan card">&#128247;</button>
+    <button id="scanBtn" class="scan-fab" type="button" aria-label="Scan card">
+      <svg class="scan-fab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M8.5 5.5 10 3h4l1.5 2.5H18A3 3 0 0 1 21 8.5v8A3.5 3.5 0 0 1 17.5 20h-11A3.5 3.5 0 0 1 3 16.5v-8A3 3 0 0 1 6 5.5h2.5Zm3.5 3A5 5 0 1 0 17 13.5 5 5 0 0 0 12 8.5Zm0 2A3 3 0 1 1 9 13.5a3 3 0 0 1 3-3Z"
+          fill="currentColor"
+        />
+      </svg>
+    </button>
 
     <template id="rowTemplate">
       <tr>

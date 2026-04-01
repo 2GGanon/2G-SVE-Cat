@@ -637,6 +637,7 @@ const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
 const legalToggle = document.getElementById("legalToggle");
 const legalText = document.getElementById("legalText");
+const legalBackdrop = document.getElementById("legalBackdrop");
 
 const sidebarToggle = document.getElementById("sidebarToggle");
 const actionsToggle = document.getElementById("actionsToggle");
@@ -1526,9 +1527,10 @@ function setActionsSidebarVisible(visible) {
 }
 
 function updateLegalState(expanded) {
-  if (!legalToggle || !legalText) return;
+  if (!legalToggle || !legalText || !legalBackdrop) return;
   legalToggle.setAttribute("aria-expanded", String(expanded));
   legalText.classList.toggle("hidden", !expanded);
+  legalBackdrop.classList.toggle("hidden", !expanded);
 }
 
 function updateZoomNavState() {
@@ -2065,10 +2067,16 @@ function bindEvents() {
   ownedOnly.addEventListener("change", renderTable);
   incompleteOnly.addEventListener("change", renderTable);
   if (extraOnly) extraOnly.addEventListener("change", renderTable);
-  if (legalToggle && legalText) {
+  if (legalToggle && legalText && legalBackdrop) {
     legalToggle.addEventListener("click", () => {
       const expanded = legalToggle.getAttribute("aria-expanded") === "true";
       updateLegalState(!expanded);
+    });
+    legalBackdrop.addEventListener("click", () => {
+      updateLegalState(false);
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") updateLegalState(false);
     });
   }
   sidebarToggle.addEventListener("click", () => {
