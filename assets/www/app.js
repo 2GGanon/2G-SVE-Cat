@@ -1432,7 +1432,7 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   const selected = selectedRarities();
   const requireOwned = ownedOnly.checked;
   const requireIncomplete = incompleteOnly.checked;
-  const requireExtra = extraOnly.checked;
+  const requireExtra = extraOnly ? extraOnly.checked : false;
   const playsetLimit = playsetLimitForCard(card);
 
   if (set && card.setCode !== set) return false;
@@ -2037,7 +2037,7 @@ function bindEvents() {
   if (artistFilter) artistFilter.addEventListener("change", renderTable);
   ownedOnly.addEventListener("change", renderTable);
   incompleteOnly.addEventListener("change", renderTable);
-  extraOnly.addEventListener("change", renderTable);
+  if (extraOnly) extraOnly.addEventListener("change", renderTable);
   if (legalToggle && legalText) {
     legalToggle.addEventListener("click", () => {
       const expanded = legalToggle.getAttribute("aria-expanded") === "true";

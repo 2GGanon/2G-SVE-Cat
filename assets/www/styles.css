@@ -227,6 +227,18 @@ body.sidebar-hidden .layout {
   transition: transform 0.25s ease;
 }
 
+.actions-shell::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+  z-index: 711;
+  pointer-events: none;
+}
+
 .actions-shell .sidebar-toggle-right {
   position: absolute;
   top: 0;
@@ -259,6 +271,7 @@ body.actions-sidebar-hidden .layout {
   grid-template-columns: 1fr;
   gap: 0.6rem;
   align-items: end;
+  padding-top: 0.2rem;
 }
 
 .control {
@@ -376,7 +389,7 @@ body.actions-sidebar-hidden .layout {
 .scan-fab {
   position: fixed;
   left: 50%;
-  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(-2.15rem + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   width: 3.25rem;
   height: 3.25rem;
@@ -707,7 +720,7 @@ body.zoom-active .zoom-nav {
   }
 
   .scan-fab {
-    bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(-2.35rem + env(safe-area-inset-bottom, 0px));
   }
 
   .filters {
