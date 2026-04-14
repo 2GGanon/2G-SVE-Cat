@@ -402,6 +402,14 @@ body.actions-sidebar-hidden .layout {
   gap: 0.6rem;
 }
 
+.deck-control {
+  width: 100%;
+}
+
+.deck-control select {
+  width: 100%;
+}
+
 .actions > button {
   flex: 1 1 9rem;
 }
@@ -425,6 +433,8 @@ body.actions-sidebar-hidden .layout {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-size: 0;
+  line-height: 0;
   box-shadow: 0 12px 28px rgba(4, 8, 20, 0.55);
 }
 
@@ -434,6 +444,7 @@ body.actions-sidebar-hidden .layout {
   display: block;
   color: #dfe8ff;
   flex: 0 0 auto;
+  pointer-events: none;
 }
 
 button,
@@ -489,6 +500,16 @@ tbody tr {
   width: 100%;
   max-width: calc(var(--thumb-w) + 18px);
   justify-items: center;
+}
+
+tbody tr.deck-sufficient {
+  border-color: #2da85f;
+  box-shadow: inset 0 0 0 1px rgba(45, 168, 95, 0.38);
+}
+
+tbody tr.deck-insufficient {
+  border-color: #d75454;
+  box-shadow: inset 0 0 0 1px rgba(215, 84, 84, 0.4);
 }
 
 th,

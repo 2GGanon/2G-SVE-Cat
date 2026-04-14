@@ -9,6 +9,8 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+const String kDefaultDeckFileName = 'Deck 1.txt';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const SveCatalogueApp());
@@ -36,6 +38,11 @@ class CatalogueWebViewPage extends StatefulWidget {
 }
 
 class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
+  static const String _collectionFolderName = 'SVE Catalogue';
+  static const String _incompleteFolderName = 'SVE Catalogue Incomplete';
+  static const String _deckFolderName = 'SVE Catalogue Deck Lists';
+  static const String _defaultDeckFileName = kDefaultDeckFileName;
+
   late final WebViewController _controller;
   late final Future<List<ScannerCardRecord>> _scannerCatalogueFuture;
   bool _isLoading = true;
@@ -95,7 +102,7 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
         return;
       }
 
-      final dir = await _resolveStorageDir('SVE Catalogue');
+      final dir = await _resolveStorageDir(_collectionFolderName);
       final stamp = DateTime.now()
           .toIso8601String()
           .replaceAll(':', '-')
@@ -117,7 +124,7 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
 
   Future<void> _handleImportLatest() async {
     try {
-      final dir = await _resolveStorageDir('SVE Catalogue');
+      final dir = await _resolveStorageDir(_collectionFolderName);
       final entries = await dir
           .list()
           .where((e) => e is File && e.path.toLowerCase().endsWith('.json'))
@@ -160,7 +167,7 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
         return;
       }
 
-      final dir = await _resolveStorageDir('SVE Catalogue Incomplete');
+      final dir = await _resolveStorageDir(_incompleteFolderName);
       final filename = requestedFilename.isEmpty
           ? '${DateTime.now().toIso8601String().replaceAll(':', '-').replaceAll('.', '-')}.txt'
           : requestedFilename;
@@ -174,6 +181,202 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
     } catch (e) {
       await _sendJsCallback(
         '__sveNativeIncompleteExportResult',
+        {'ok': false, 'error': e.toString()},
+      );
+    }
+  }
+
+  Future<void> _handleDeckFileList() async {
+    try {
+      final dir = await _resolveStorageDir(_deckFolderName);
+      await _ensureDefaultDeckFile(dir);
+      final files = await dir
+          .list()
+          .where((entry) => entry is File && entry.path.toLowerCase().endsWith('.txt'))
+          .cast<File>()
+          .toList();
+      files.sort((a, b) {
+        final aName = a.uri.pathSegments.last.toLowerCase();
+        final bName = b.uri.pathSegments.last.toLowerCase();
+        if (aName == _defaultDeckFileName.toLowerCase() && bName != _defaultDeckFileName.toLowerCase()) {
+          return -1;
+        }
+        if (aName != _defaultDeckFileName.toLowerCase() && bName == _defaultDeckFileName.toLowerCase()) {
+          return 1;
+        }
+        return aName.compareTo(bName);
+      });
+      await _sendJsCallback(
+        '__sveNativeDeckListFilesResult',
+        {
+          'ok': true,
+          'files': files.map((file) => file.uri.pathSegments.last).toList(),
+          'path': dir.path,
+        },
+      );
+    } catch (e) {
+      await _sendJsCallback(
+        '__sveNativeDeckListFilesResult',
+        {'ok': false, 'error': e.toString()},
+      );
+    }
+  }
+
+  Future<void> _handleDeckImport(Map<String, dynamic> message) async {
+    try {
+      final fileName = (message['fileName'] ?? '').toString().trim();
+      if (fileName.isEmpty) {
+        await _sendJsCallback(
+          '__sveNativeDeckImportResult',
+          {'ok': false, 'error': 'No deck list file was selected.'},
+        );
+        return;
+      }
+
+      final dir = await _resolveStorageDir(_deckFolderName);
+      await _ensureDefaultDeckFile(dir);
+      final file = File('${dir.path}/$fileName');
+      if (!await file.exists()) {
+        await _sendJsCallback(
+          '__sveNativeDeckImportResult',
+          {'ok': false, 'error': 'Deck list file was not found.', 'fileName': fileName},
+        );
+        return;
+      }
+
+      final textContent = await file.readAsString();
+      await _sendJsCallback(
+        '__sveNativeDeckImportResult',
+        {
+          'ok': true,
+          'fileName': file.uri.pathSegments.last,
+          'path': file.path,
+          'textContent': textContent,
+        },
+      );
+    } catch (e) {
+      await _sendJsCallback(
+        '__sveNativeDeckImportResult',
+        {'ok': false, 'error': e.toString()},
+      );
+    }
+  }
+
+  Future<void> _handleRenameDeck(Map<String, dynamic> message) async {
+    try {
+      final fileName = (message['fileName'] ?? '').toString().trim();
+      final requestedName = (message['newFileName'] ?? '').toString().trim();
+      if (fileName.isEmpty || requestedName.isEmpty) {
+        await _sendJsCallback(
+          '__sveNativeDeckRenameResult',
+          {'ok': false, 'error': 'Both current and new deck names are required.'},
+        );
+        return;
+      }
+
+      final dir = await _resolveStorageDir(_deckFolderName);
+      await _ensureDefaultDeckFile(dir);
+      final source = File('${dir.path}/$fileName');
+      if (!await source.exists()) {
+        await _sendJsCallback(
+          '__sveNativeDeckRenameResult',
+          {'ok': false, 'error': 'The selected deck file was not found.'},
+        );
+        return;
+      }
+
+      final sanitizedName = _sanitizeDeckFileName(requestedName);
+      if (sanitizedName.isEmpty) {
+        await _sendJsCallback(
+          '__sveNativeDeckRenameResult',
+          {'ok': false, 'error': 'Enter a valid deck file name.'},
+        );
+        return;
+      }
+
+      if (sanitizedName.toLowerCase() == fileName.toLowerCase()) {
+        await _sendJsCallback(
+          '__sveNativeDeckRenameResult',
+          {
+            'ok': true,
+            'oldFileName': fileName,
+            'newFileName': fileName,
+            'path': source.path,
+          },
+        );
+        return;
+      }
+
+      final destination = File('${dir.path}/$sanitizedName');
+      if (await destination.exists()) {
+        await _sendJsCallback(
+          '__sveNativeDeckRenameResult',
+          {'ok': false, 'error': 'A deck file with that name already exists.'},
+        );
+        return;
+      }
+
+      final renamed = await source.rename(destination.path);
+      await _ensureDefaultDeckFile(dir);
+      await _sendJsCallback(
+        '__sveNativeDeckRenameResult',
+        {
+          'ok': true,
+          'oldFileName': fileName,
+          'newFileName': renamed.uri.pathSegments.last,
+          'path': renamed.path,
+        },
+      );
+    } catch (e) {
+      await _sendJsCallback(
+        '__sveNativeDeckRenameResult',
+        {'ok': false, 'error': e.toString()},
+      );
+    }
+  }
+
+  Future<void> _handleDeckMutation(Map<String, dynamic> message, {required bool add}) async {
+    try {
+      final fileName = (message['fileName'] ?? '').toString().trim();
+      final deckEntryLabel = (message['deckEntryLabel'] ?? '').toString().trim();
+      if (fileName.isEmpty || deckEntryLabel.isEmpty) {
+        await _sendJsCallback(
+          '__sveNativeDeckMutationResult',
+          {'ok': false, 'error': 'Deck file and card entry are required.'},
+        );
+        return;
+      }
+
+      final dir = await _resolveStorageDir(_deckFolderName);
+      await _ensureDefaultDeckFile(dir);
+      final file = File('${dir.path}/$fileName');
+      if (!await file.exists()) {
+        await _sendJsCallback(
+          '__sveNativeDeckMutationResult',
+          {'ok': false, 'error': 'The selected deck file was not found.'},
+        );
+        return;
+      }
+
+      final updatedText = await _updateDeckFileEntry(
+        file,
+        deckEntryLabel,
+        add ? 1 : -1,
+      );
+
+      await _sendJsCallback(
+        '__sveNativeDeckMutationResult',
+        {
+          'ok': true,
+          'action': add ? 'add' : 'remove',
+          'fileName': file.uri.pathSegments.last,
+          'path': file.path,
+          'textContent': updatedText,
+        },
+      );
+    } catch (e) {
+      await _sendJsCallback(
+        '__sveNativeDeckMutationResult',
         {'ok': false, 'error': e.toString()},
       );
     }
@@ -218,6 +421,16 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
         await _handleIncompleteExport(parsed);
       } else if (type == 'import_latest') {
         await _handleImportLatest();
+      } else if (type == 'list_deck_lists') {
+        await _handleDeckFileList();
+      } else if (type == 'import_deck_list') {
+        await _handleDeckImport(parsed);
+      } else if (type == 'rename_deck_list') {
+        await _handleRenameDeck(parsed);
+      } else if (type == 'add_card_to_deck') {
+        await _handleDeckMutation(parsed, add: true);
+      } else if (type == 'remove_card_from_deck') {
+        await _handleDeckMutation(parsed, add: false);
       } else if (type == 'scan_card') {
         await _handleScanCard();
       } else if (type == 'haptic_feedback') {
@@ -266,6 +479,57 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
       ),
     );
   }
+}
+
+Future<void> _ensureDefaultDeckFile(Directory dir) async {
+  final file = File('${dir.path}/$kDefaultDeckFileName');
+  if (!await file.exists()) {
+    await file.writeAsString('', flush: true);
+  }
+}
+
+String _sanitizeDeckFileName(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return '';
+  final cleaned = trimmed.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (cleaned.isEmpty) return '';
+  return cleaned.toLowerCase().endsWith('.txt') ? cleaned : '$cleaned.txt';
+}
+
+Future<String> _updateDeckFileEntry(File file, String entryLabel, int delta) async {
+  final lines = await file.readAsLines();
+  final updated = <String>[];
+  var found = false;
+
+  for (final rawLine in lines) {
+    final line = rawLine.trimRight();
+    final match = RegExp(r'^\s*(\d+)\s*x?\s+(.+?)\s*$').firstMatch(line);
+    if (match == null) {
+      if (rawLine.trim().isNotEmpty) updated.add(rawLine);
+      continue;
+    }
+
+    final qty = int.tryParse(match.group(1) ?? '') ?? 0;
+    final name = (match.group(2) ?? '').trim();
+    if (!found && name == entryLabel) {
+      found = true;
+      final nextQty = qty + delta;
+      if (nextQty > 0) {
+        updated.add('$nextQty $entryLabel');
+      }
+      continue;
+    }
+
+    updated.add(rawLine);
+  }
+
+  if (!found && delta > 0) {
+    updated.add('${delta} $entryLabel');
+  }
+
+  final text = updated.where((line) => line.trim().isNotEmpty).join('\n');
+  await file.writeAsString(text.isEmpty ? '' : '$text\n', flush: true);
+  return file.readAsString();
 }
 
 class NativeCardScannerPage extends StatefulWidget {
@@ -654,13 +918,43 @@ class _NativeCardScannerPageState extends State<NativeCardScannerPage> {
   }
 }
 
-class _ScannerThumbnail extends StatelessWidget {
+class _ScannerThumbnail extends StatefulWidget {
   const _ScannerThumbnail({required this.card});
 
   final ScannerCardRecord? card;
 
   @override
+  State<_ScannerThumbnail> createState() => _ScannerThumbnailState();
+}
+
+class _ScannerThumbnailState extends State<_ScannerThumbnail> {
+  int _candidateIndex = 0;
+  String? _activeCode;
+
+  @override
+  void didUpdateWidget(covariant _ScannerThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextCode = widget.card?.code;
+    if (_activeCode != nextCode) {
+      _activeCode = nextCode;
+      _candidateIndex = 0;
+    }
+  }
+
+  void _advanceCandidate() {
+    final card = widget.card;
+    if (card == null) return;
+    if (_candidateIndex >= card.artAssetCandidates.length - 1) return;
+    setState(() {
+      _candidateIndex += 1;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final card = widget.card;
+    _activeCode ??= card?.code;
+
     return Container(
       width: 92,
       height: 128,
@@ -675,11 +969,19 @@ class _ScannerThumbnail extends StatelessWidget {
               child: Icon(Icons.image_search, color: Color(0xFFB5C8F4), size: 34),
             )
           : Image.asset(
-              card!.artAssetCandidates.first,
+              card.artAssetCandidates[_candidateIndex],
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Center(
-                child: Icon(Icons.photo, color: Color(0xFFB5C8F4), size: 34),
-              ),
+              errorBuilder: (_, __, ___) {
+                if (_candidateIndex < card.artAssetCandidates.length - 1) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _advanceCandidate();
+                  });
+                  return const SizedBox.expand();
+                }
+                return const Center(
+                  child: Icon(Icons.photo, color: Color(0xFFB5C8F4), size: 34),
+                );
+              },
             ),
     );
   }
@@ -761,7 +1063,13 @@ class ScannerCardRecord {
         ? uri!.pathSegments.last
         : artUrl.split('/').last;
     if (fileName.isEmpty) return const [];
-    return ['assets/www/assets/cards/$setCode/$fileName'];
+    final basePath = 'assets/www/assets/cards/$setCode/$fileName';
+    final candidates = <String>{basePath};
+    final avifPath = basePath.replaceFirst(RegExp(r'\.(png|jpg|jpeg|webp)$', caseSensitive: false), '.avif');
+    candidates.add(avifPath);
+    final webpPath = basePath.replaceFirst(RegExp(r'\.(png|jpg|jpeg|avif)$', caseSensitive: false), '.webp');
+    candidates.add(webpPath);
+    return candidates.toList();
   }
 }
 

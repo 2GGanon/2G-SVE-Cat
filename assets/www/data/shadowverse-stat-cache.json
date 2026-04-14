@@ -26454,6 +26454,91 @@
     "Card Cost": "1",
     "Defense": "-"
   },
+  "PR-388EN": {
+    "Attack": "-",
+    "Card Cost": "-",
+    "Defense": "-"
+  },
+  "PR-389EN": {
+    "Attack": "-",
+    "Card Cost": "-",
+    "Defense": "-"
+  },
+  "PR-390EN": {
+    "Attack": "0",
+    "Card Cost": "1",
+    "Defense": "3"
+  },
+  "PR-391EN": {
+    "Attack": "0",
+    "Card Cost": "1",
+    "Defense": "3"
+  },
+  "PR-392EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "PR-393EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "PR-394EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "PR-395EN": {
+    "Attack": "-",
+    "Card Cost": "-",
+    "Defense": "-"
+  },
+  "PR-396EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "PR-397EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "PR-398EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "PR-399EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "PR-400EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "PR-401EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "PR-402EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "PR-403EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "PR-404EN": {
+    "Attack": "4",
+    "Card Cost": "4",
+    "Defense": "4"
+  },
   "SD01-001EN": {
     "Attack": "5",
     "Card Cost": "6",

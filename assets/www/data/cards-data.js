@@ -5291,6 +5291,23 @@ Angel's Blessing,PR-382EN,0,Neutral,Angel,Spell,3,-,-,Chiaki Negishi,,https://en
 "Melvie, Princess Witch",PR-385EN,0,Runecraft,Mage,Follower,1,1,1,Hachi,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-385EN.png
 Stay in Paradise,PR-386EN,0,Neutral,Festive,Spell,1,-,-,Uncredited,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-386EN.png
 Ardent Torch,PR-387EN,0,Dragoncraft,Omen|Wyrmkin,Spell,1,-,-,netuki,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-387EN.png
+Evolution Point,PR-388EN,0,,,Evolution Point,-,-,-,Uncredited,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-388EN.png
+Super-Evolution Point,PR-389EN,0,,,Super-Evolution Point,-,-,-,Uncredited,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-389EN.png
+"Leah, Bellringer Angel",PR-390EN,0,Neutral,Angel,Follower,1,0,3,netuki,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-390EN.png
+"Leah, Bellringer Angel",PR-391EN,0,Neutral,Angel,Follower,1,0,3,netuki,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-391EN.png
+"Phildau, Lionheart Ward",PR-392EN,0,Neutral,Musical|Lightborne,Follower,3,3,3,ShuLa,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-392EN.png
+"Phildau, Lionheart Ward",PR-393EN,0,Neutral,Musical|Lightborne,Follower / Evolved,-,4,4,ShuLa,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-393EN.png
+"Apollo, Heaven's Envoy",PR-394EN,0,Neutral,Deity,Follower,3,3,3,Saika,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-394EN.png
+Super-Evolution Point,PR-395EN,0,,,Super-Evolution Point,-,-,-,Uncredited,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-395EN.png
+"Lily, Crystalian Innocence",PR-396EN,0,Forestcraft,Crystalian,Follower,1,1,1,Ponzu,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-396EN.png
+Luminous Lancetrooper,PR-397EN,0,Swordcraft,Commander|Luminous,Follower,2,1,1,Gen,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-397EN.png
+"Ms. Miranda, Adored Academic",PR-398EN,0,Runecraft,Mage|Academic,Follower,2,2,2,Maki,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-398EN.png
+"Marion, Ravishing Dragonewt",PR-399EN,0,Dragoncraft,Dragonewt,Follower,2,2,3,yamamomo,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-399EN.png
+Soul Predation,PR-400EN,0,Abysscraft,Demon,Spell,2,-,-,Rin,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-400EN.png
+Pact of the Beast Princess,PR-401EN,0,Havencraft,Faith,Amulet,2,-,-,yamamomo,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-401EN.png
+"Ceres, Blue Rose Maiden",PR-402EN,0,Abysscraft,Departed,Follower,2,1,3,Manabi Okada,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-402EN.png
+Serene Sanctuary,PR-403EN,0,Havencraft,Faith,Amulet,1,-,-,Akefumi,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-403EN.png
+"Amalia, Luxsteel Paladin",PR-404EN,0,Swordcraft,Officer,Follower,4,4,4,Uncredited,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/PR/PR-404EN.png
 "Aria, Fairy Princess",SD01-001EN,0,Forestcraft,Pixie|Princess,Follower,6,5,5,Mushimaro,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/SD01/SD01-001EN.png
 Titania's Sanctuary,SD01-002EN,0,Forestcraft,Pixie|Princess,Amulet,2,-,-,Ponzu,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/SD01/SD01-002EN.png
 Rose Gardener,SD01-003EN,0,Forestcraft,Verdant,Follower,3,3,3,shichigotukimi,,https://en.shadowverse-evolve.com/wordpress/wp-content/images/cardlist/SD01/SD01-003EN.png

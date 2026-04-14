@@ -117,6 +117,13 @@
       <button id="actionsToggle" class="sidebar-toggle sidebar-toggle-right" type="button" aria-label="Toggle actions sidebar">&#128214;</button>
       <div class="controls actions-panel">
         <div class="actions actions-vertical">
+          <label class="control deck-control">
+            <span>Deck List</span>
+            <select id="deckFilter">
+              <option value="">No Deck</option>
+            </select>
+          </label>
+          <button id="renameDeckBtn" type="button">Rename Deck</button>
           <button id="exportBtn" type="button">Export Collection</button>
           <button id="importBtn" type="button">Import Collection</button>
           <button id="exportIncompleteBtn" type="button">Export Incomplete</button>
@@ -144,7 +151,13 @@
     </main>
 
     <button id="scanBtn" class="scan-fab" type="button" aria-label="Scan card">
-      <svg class="scan-fab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <svg
+        class="scan-fab-icon"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        focusable="false"
+      >
         <path
           d="M8.5 5.5 10 3h4l1.5 2.5H18A3 3 0 0 1 21 8.5v8A3.5 3.5 0 0 1 17.5 20h-11A3.5 3.5 0 0 1 3 16.5v-8A3 3 0 0 1 6 5.5h2.5Zm3.5 3A5 5 0 1 0 17 13.5 5 5 0 0 0 12 8.5Zm0 2A3 3 0 1 1 9 13.5a3 3 0 0 1 3-3Z"
           fill="currentColor"

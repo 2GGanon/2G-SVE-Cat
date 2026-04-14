@@ -632,6 +632,8 @@ const scanBtn = document.getElementById("scanBtn");
 const exportBtn = document.getElementById("exportBtn");
 const importBtn = document.getElementById("importBtn");
 const exportIncompleteBtn = document.getElementById("exportIncompleteBtn");
+const deckFilter = document.getElementById("deckFilter");
+const renameDeckBtn = document.getElementById("renameDeckBtn");
 const importInput = document.getElementById("importInput");
 const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
@@ -692,6 +694,14 @@ let appliedSearchText = "";
 let scanInFlight = false;
 let scanCodeAliasMap = new Map();
 let scanNameAliasMap = new Map();
+let cardsByDeckGroupKey = new Map();
+let availableDeckFiles = [];
+let activeDeck = {
+  fileName: "",
+  requirements: new Map(),
+  unmatchedEntries: [],
+};
+const LONG_PRESS_MS = 550;
 
 function prPromoSourceByCode(cardCode) {
   const normalized = normalizeCardCode(cardCode);
@@ -1038,6 +1048,67 @@ window.__sveNativeIncompleteExportResult = function __sveNativeIncompleteExportR
   }
 };
 
+window.__sveNativeDeckListFilesResult = function __sveNativeDeckListFilesResult(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (!payload.ok) {
+      populateDeckFilter([]);
+      return;
+    }
+    populateDeckFilter(Array.isArray(payload.files) ? payload.files : []);
+  } catch {
+    populateDeckFilter([]);
+  }
+};
+
+window.__sveNativeDeckImportResult = function __sveNativeDeckImportResult(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (!payload.ok) {
+      alert(`Deck import failed: ${payload.error || "Unknown error"}`);
+      if (deckFilter) deckFilter.value = activeDeck.fileName || "";
+      return;
+    }
+    applyDeckListText(payload.textContent || "", payload.fileName || "");
+  } catch {
+    alert("Deck import failed.");
+    if (deckFilter) deckFilter.value = activeDeck.fileName || "";
+  }
+};
+
+window.__sveNativeDeckRenameResult = function __sveNativeDeckRenameResult(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (!payload.ok) {
+      alert(`Deck rename failed: ${payload.error || "Unknown error"}`);
+      return;
+    }
+    requestDeckFileList();
+    if (payload.newFileName) {
+      requestDeckImport(payload.newFileName);
+    }
+    alert(`Deck renamed to:\n${deckFileLabel(payload.newFileName || "")}`);
+  } catch {
+    alert("Deck rename failed.");
+  }
+};
+
+window.__sveNativeDeckMutationResult = function __sveNativeDeckMutationResult(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (!payload.ok) {
+      alert(`Deck update failed: ${payload.error || "Unknown error"}`);
+      return;
+    }
+    requestDeckFileList();
+    if (activeDeck.fileName && payload.fileName === activeDeck.fileName && payload.textContent != null) {
+      applyDeckListText(payload.textContent, payload.fileName || activeDeck.fileName);
+    }
+  } catch {
+    alert("Deck update failed.");
+  }
+};
+
 window.__sveNativeScanResult = function __sveNativeScanResult(payloadJson) {
   setScanBusy(false);
   try {
@@ -1258,6 +1329,296 @@ function parseCardTypes(rawCardType) {
     .filter(Boolean);
 }
 
+function canonicalDeckCardName(name) {
+  return String(name || "")
+    .replace(/\s+\((Evolved|Advanced)\)\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function deckModeFromText(name) {
+  const value = String(name || "").trim();
+  if (/\(Advanced\)\s*$/i.test(value)) return "advanced";
+  if (/\(Evolved\)\s*$/i.test(value)) return "evolved";
+  return "base";
+}
+
+function deckModeForCard(card) {
+  if (card?.isAdvanced) {
+    return "advanced";
+  }
+  return card.isEvolved ? "evolved" : "base";
+}
+
+function deckGroupKey(name, mode) {
+  return `${canonicalDeckCardName(name).toLowerCase()}::${mode}`;
+}
+
+function deckGroupKeyForCard(card) {
+  return deckGroupKey(card.name, deckModeForCard(card));
+}
+
+function buildDeckIndexes() {
+  cardsByDeckGroupKey = new Map();
+  cards.forEach((card) => {
+    const key = deckGroupKeyForCard(card);
+    const existing = cardsByDeckGroupKey.get(key) || [];
+    existing.push(card);
+    cardsByDeckGroupKey.set(key, existing);
+  });
+}
+
+function parseDeckListText(text) {
+  const requirements = new Map();
+  const unmatchedEntries = [];
+  const lines = String(text || "").split(/\r?\n/);
+  let orderCounter = 0;
+
+  lines.forEach((line, index) => {
+    const raw = line.trim();
+    if (!raw || raw.startsWith("#") || raw.startsWith("//")) return;
+
+    const match = raw.match(/^(\d+)\s*x?\s+(.+?)\s*$/i);
+    if (!match) {
+      unmatchedEntries.push({ lineNumber: index + 1, text: raw, reason: "Could not parse line." });
+      return;
+    }
+
+    const qty = Number.parseInt(match[1], 10);
+    const entryName = match[2].trim();
+    if (!Number.isFinite(qty) || qty <= 0 || !entryName) {
+      unmatchedEntries.push({ lineNumber: index + 1, text: raw, reason: "Invalid quantity or card name." });
+      return;
+    }
+
+    const mode = deckModeFromText(entryName);
+    const key = deckGroupKey(entryName, mode);
+    const displayName = canonicalDeckCardName(entryName);
+    const existingEntry = requirements.get(key);
+    const existingQty = existingEntry?.quantity || 0;
+    requirements.set(key, {
+      quantity: existingQty + qty,
+      displayName,
+      mode,
+      order: existingEntry?.order ?? orderCounter++,
+    });
+  });
+
+  requirements.forEach((entry, key) => {
+    if (!cardsByDeckGroupKey.has(key)) {
+      unmatchedEntries.push({
+        lineNumber: null,
+        text: entry.mode === "base" ? entry.displayName : `${entry.displayName} (${entry.mode === "evolved" ? "Evolved" : "Advanced"})`,
+        reason: "No matching card was found in the catalogue.",
+      });
+    }
+  });
+
+  return { requirements, unmatchedEntries };
+}
+
+function deckRequirementForCard(card) {
+  return activeDeck.requirements.get(deckGroupKeyForCard(card))?.quantity || 0;
+}
+
+function ownedTotalForDeckKey(deckKey) {
+  const variants = cardsByDeckGroupKey.get(deckKey) || [];
+  return variants.reduce((sum, card) => sum + ownedFor(card.code), 0);
+}
+
+function isDeckFilterActive() {
+  return activeDeck.requirements.size > 0;
+}
+
+function applyDeckStateToRow(tr, card) {
+  tr.classList.remove("deck-sufficient", "deck-insufficient");
+  const key = deckGroupKeyForCard(card);
+  tr.dataset.deckKey = key;
+  const required = deckRequirementForCard(card);
+  if (!required) return;
+  const ownedTotal = ownedTotalForDeckKey(key);
+  tr.classList.add(ownedTotal >= required ? "deck-sufficient" : "deck-insufficient");
+}
+
+function refreshRenderedDeckStateForKey(deckKey) {
+  const rows = [...tableBody.querySelectorAll("tr")].filter((row) => row.dataset.deckKey === deckKey);
+  rows.forEach((row) => {
+    const card = cardByCode.get(row.dataset.cardCode || "");
+    if (card) applyDeckStateToRow(row, card);
+  });
+}
+
+function deckFileLabel(fileName) {
+  return String(fileName || "").replace(/\.txt$/i, "");
+}
+
+function deckDisplayLabelForCard(card) {
+  const mode = deckModeForCard(card);
+  if (mode === "evolved") return `${canonicalDeckCardName(card.name)} (Evolved)`;
+  if (mode === "advanced") return `${canonicalDeckCardName(card.name)} (Advanced)`;
+  return canonicalDeckCardName(card.name);
+}
+
+function populateDeckFilter(fileNames = []) {
+  if (!deckFilter) return;
+  availableDeckFiles = [...new Set(fileNames)].sort((a, b) => {
+    const aIsDefault = a.toLowerCase() === "deck 1.txt";
+    const bIsDefault = b.toLowerCase() === "deck 1.txt";
+    if (aIsDefault && !bIsDefault) return -1;
+    if (!aIsDefault && bIsDefault) return 1;
+    return a.localeCompare(b, undefined, { sensitivity: "base" });
+  });
+  const current = deckFilter.value;
+  deckFilter.innerHTML = '<option value="">No Deck</option>';
+  availableDeckFiles.forEach((fileName) => {
+    const option = document.createElement("option");
+    option.value = fileName;
+    option.textContent = deckFileLabel(fileName);
+    deckFilter.appendChild(option);
+  });
+  if (current && availableDeckFiles.includes(current)) {
+    deckFilter.value = current;
+  } else if (activeDeck.fileName && availableDeckFiles.includes(activeDeck.fileName)) {
+    deckFilter.value = activeDeck.fileName;
+  } else {
+    deckFilter.value = "";
+  }
+}
+
+function clearActiveDeck({ keepSelection = false } = {}) {
+  activeDeck = {
+    fileName: "",
+    requirements: new Map(),
+    unmatchedEntries: [],
+  };
+  if (deckFilter && !keepSelection) {
+    deckFilter.value = "";
+  }
+  renderTable();
+}
+
+function applyDeckListText(textContent, fileName) {
+  const parsed = parseDeckListText(textContent);
+  activeDeck = {
+    fileName: fileName || "",
+    requirements: parsed.requirements,
+    unmatchedEntries: parsed.unmatchedEntries,
+  };
+  if (deckFilter) {
+    deckFilter.value = fileName || "";
+  }
+  renderTable();
+
+  const matchedEntries = [...parsed.requirements.entries()].filter(([key]) => cardsByDeckGroupKey.has(key)).length;
+  const unmatchedSummary = parsed.unmatchedEntries.length
+    ? `\nUnmatched entries: ${parsed.unmatchedEntries.length}`
+    : "";
+  alert(`Deck loaded: ${deckFileLabel(fileName || "Custom Deck")}\nMatched entries: ${matchedEntries}${unmatchedSummary}`);
+}
+
+function promptDeckFileSelection(defaultFileName = "") {
+  if (!availableDeckFiles.length) {
+    alert("No deck list files are available.");
+    return null;
+  }
+
+  const deckList = availableDeckFiles
+    .map((fileName, index) => `${index + 1}. ${deckFileLabel(fileName)}`)
+    .join("\n");
+  const suggestedValue = defaultFileName && availableDeckFiles.includes(defaultFileName)
+    ? defaultFileName
+    : availableDeckFiles[0];
+  const response = window.prompt(
+    `Choose a deck file by number or file name:\n\n${deckList}`,
+    suggestedValue
+  );
+  if (response == null) return null;
+  const trimmed = response.trim();
+  if (!trimmed) return null;
+  const asNumber = Number.parseInt(trimmed, 10);
+  if (Number.isFinite(asNumber) && String(asNumber) === trimmed) {
+    return availableDeckFiles[asNumber - 1] || null;
+  }
+  const directMatch = availableDeckFiles.find((fileName) => fileName.toLowerCase() === trimmed.toLowerCase());
+  if (directMatch) return directMatch;
+  const labelMatch = availableDeckFiles.find((fileName) => deckFileLabel(fileName).toLowerCase() === trimmed.toLowerCase());
+  if (labelMatch) return labelMatch;
+  alert("That deck file was not found.");
+  return null;
+}
+
+function requestRenameDeck(fileName, newFileName) {
+  return nativePost({ type: "rename_deck_list", fileName, newFileName });
+}
+
+function requestDeckMutation(action, fileName, card) {
+  return nativePost({
+    type: action === "add" ? "add_card_to_deck" : "remove_card_from_deck",
+    fileName,
+    cardName: canonicalDeckCardName(card.name),
+    deckEntryLabel: deckDisplayLabelForCard(card),
+    mode: deckModeForCard(card),
+  });
+}
+
+function promptRenameSelectedDeck() {
+  const currentFile = deckFilter ? deckFilter.value : "";
+  if (!currentFile) {
+    alert("Select a deck list first.");
+    return;
+  }
+  const nextName = window.prompt("Rename the selected deck file:", deckFileLabel(currentFile));
+  if (nextName == null) return;
+  const trimmed = nextName.trim();
+  if (!trimmed) {
+    alert("Enter a deck name.");
+    return;
+  }
+  if (!requestRenameDeck(currentFile, trimmed)) {
+    alert("Deck renaming is only available in the Android app build.");
+  }
+}
+
+function handleDeckLongPress(card) {
+  if (isDeckFilterActive()) {
+    if (!activeDeck.fileName) return;
+    const confirmed = window.confirm(
+      `Remove 1x ${deckDisplayLabelForCard(card)} from ${deckFileLabel(activeDeck.fileName)}?`
+    );
+    if (!confirmed) return;
+    if (!requestDeckMutation("remove", activeDeck.fileName, card)) {
+      alert("Deck editing is only available in the Android app build.");
+    }
+    return;
+  }
+
+  const targetDeck = promptDeckFileSelection(deckFilter ? deckFilter.value : "");
+  if (!targetDeck) return;
+  const confirmed = window.confirm(
+    `Add 1x ${deckDisplayLabelForCard(card)} to ${deckFileLabel(targetDeck)}?`
+  );
+  if (!confirmed) return;
+  if (!requestDeckMutation("add", targetDeck, card)) {
+    alert("Deck editing is only available in the Android app build.");
+  }
+}
+
+function requestDeckFileList() {
+  if (!nativePost({ type: "list_deck_lists" })) {
+    populateDeckFilter([]);
+  }
+}
+
+function requestDeckImport(fileName) {
+  if (!fileName) {
+    clearActiveDeck();
+    return;
+  }
+  if (!nativePost({ type: "import_deck_list", fileName })) {
+    alert("Deck list import is only available in the Android app build.");
+  }
+}
+
 function saveCollection() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
 }
@@ -1439,6 +1800,7 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   const requireIncomplete = incompleteOnly.checked;
   const requireExtra = extraOnly ? extraOnly.checked : false;
   const playsetLimit = playsetLimitForCard(card);
+  const deckRequirement = deckRequirementForCard(card);
 
   if (set && card.setCode !== set) return false;
   if (className && card.className !== className) return false;
@@ -1452,6 +1814,7 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   if (requireOwned && qty === 0) return false;
   if (requireIncomplete && qty >= playsetLimit) return false;
   if (requireExtra && qty <= playsetLimit) return false;
+  if (isDeckFilterActive() && deckRequirement === 0) return false;
   if (!text) return true;
   return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
 }
@@ -1459,6 +1822,29 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
 function filteredCards() {
   const set = setFilter.value;
   const rows = cards.filter((card) => matchesActiveFilters(card));
+
+  if (isDeckFilterActive()) {
+    rows.sort((a, b) => {
+      const aEntry = activeDeck.requirements.get(deckGroupKeyForCard(a));
+      const bEntry = activeDeck.requirements.get(deckGroupKeyForCard(b));
+      const aName = canonicalDeckCardName(a.name);
+      const bName = canonicalDeckCardName(b.name);
+      const aMode = deckModeForCard(a);
+      const bMode = deckModeForCard(b);
+      const aOrder = aEntry?.order ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = bEntry?.order ?? Number.MAX_SAFE_INTEGER;
+      const aModeRank = aMode === "base" ? 0 : aMode === "evolved" ? 1 : 2;
+      const bModeRank = bMode === "base" ? 0 : bMode === "evolved" ? 1 : 2;
+
+      return (
+        aOrder - bOrder ||
+        aName.localeCompare(bName, undefined, { sensitivity: "base" }) ||
+        aModeRank - bModeRank ||
+        a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: "base" })
+      );
+    });
+    return rows;
+  }
 
   if (set === "PR") {
     rows.sort((a, b) => {
@@ -1678,13 +2064,43 @@ function createZoomPromoInfo() {
 function createRow(card) {
   const fragment = rowTemplate.content.cloneNode(true);
   const tr = fragment.querySelector("tr");
+  tr.dataset.cardCode = card.code;
   const qtyEl = fragment.querySelector(".qty-value");
   const artEl = fragment.querySelector(".card-art");
   const dualBtn = fragment.querySelector(".dual-toggle");
   const faces = cardFaces(card);
   let faceIndex = 0;
+  let longPressTimer = null;
+  let longPressTriggered = false;
   setCardFace(artEl, card, faces[faceIndex]);
-  artEl.addEventListener("click", () => openZoomFor(artEl));
+  artEl.addEventListener("click", () => {
+    if (longPressTriggered) {
+      longPressTriggered = false;
+      return;
+    }
+    openZoomFor(artEl);
+  });
+
+  function clearLongPress() {
+    if (longPressTimer) {
+      window.clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+
+  artEl.addEventListener("pointerdown", (ev) => {
+    if (ev.button !== 0) return;
+    longPressTriggered = false;
+    clearLongPress();
+    longPressTimer = window.setTimeout(() => {
+      longPressTimer = null;
+      longPressTriggered = true;
+      handleDeckLongPress(card);
+    }, LONG_PRESS_MS);
+  });
+  ["pointerup", "pointerleave", "pointercancel", "dragstart"].forEach((eventName) => {
+    artEl.addEventListener(eventName, clearLongPress);
+  });
 
   if (faces.length > 1) {
     dualBtn.classList.remove("hidden");
@@ -1701,6 +2117,7 @@ function createRow(card) {
   fragment.querySelector(".card-set").textContent = card.setCode;
   fragment.querySelector(".promo-source").textContent = card.promoSource;
   qtyEl.textContent = String(ownedFor(card.code));
+  applyDeckStateToRow(tr, card);
 
   function updateOwnedCount(delta) {
     const wasVisible = matchesActiveFilters(card);
@@ -1712,7 +2129,10 @@ function createRow(card) {
 
     if (wasVisible !== isVisible) {
       renderTable();
+      return;
     }
+
+    refreshRenderedDeckStateForKey(deckGroupKeyForCard(card));
   }
 
   fragment.querySelector(".dec").addEventListener("click", () => {
@@ -1929,12 +2349,13 @@ async function loadCards() {
   cards = parsed.map((r) => {
     const rawCode = r["Card Code"];
     const rarityInfo = parseRarityFromCardCode(rawCode);
+    const parsedCardTypes = parseCardTypes(r["Card Type"]);
     return {
       name: r["Card Name"],
       code: rawCode,
       className: r["Class"] || "",
       traits: parseTraits(r["Traits"]),
-      cardTypes: parseCardTypes(r["Card Type"]),
+      cardTypes: parsedCardTypes,
       cardCost: r["Card Cost"] || "",
       attack: r["Attack"] || "",
       defense: r["Defense"] || "",
@@ -1946,6 +2367,7 @@ async function loadCards() {
       rarityOutlier: rarityInfo.outlier,
       rarityOutlierReason: rarityInfo.outlierReason,
       isEvolved: isEvolvedType(cardTypeMap[rawCode], r["Card Name"]),
+      isAdvanced: parsedCardTypes.some((value) => String(value).toUpperCase() === "ADVANCED"),
     };
   });
 
@@ -1987,6 +2409,7 @@ async function loadCards() {
       rarityOutlier: rarityInfo.outlier,
       rarityOutlierReason: rarityInfo.outlierReason,
       isEvolved: entry.isEvolved,
+      isAdvanced: false,
     });
   });
 
@@ -2010,6 +2433,7 @@ async function loadCards() {
       rarityOutlier: rarityInfo.outlier,
       rarityOutlierReason: rarityInfo.outlierReason,
       isEvolved: true,
+      isAdvanced: false,
     };
     const bp08002Index = cards.findIndex((c) => c.code === "BP08-002EN");
     if (bp08002Index >= 0) {
@@ -2021,6 +2445,7 @@ async function loadCards() {
 
   initDualGroups();
   cardByCode = new Map(cards.map((card) => [card.code, card]));
+  buildDeckIndexes();
   buildScanIndexes();
 
   rarityOutliers = cards.filter((c) => c.rarityOutlier).map((c) => ({
@@ -2087,6 +2512,7 @@ function bindEvents() {
     actionsToggle.addEventListener("click", () => {
       const willShow = document.body.classList.contains("actions-sidebar-hidden");
       setActionsSidebarVisible(willShow);
+      if (willShow) requestDeckFileList();
     });
   }
   exportBtn.addEventListener("click", () => {
@@ -2095,6 +2521,16 @@ function bindEvents() {
   if (exportIncompleteBtn) {
     exportIncompleteBtn.addEventListener("click", () => {
       exportIncompleteList();
+    });
+  }
+  if (renameDeckBtn) {
+    renameDeckBtn.addEventListener("click", () => {
+      promptRenameSelectedDeck();
+    });
+  }
+  if (deckFilter) {
+    deckFilter.addEventListener("change", () => {
+      requestDeckImport(deckFilter.value);
     });
   }
   if (scanBtn) {
@@ -2146,13 +2582,14 @@ async function start() {
   registerServiceWorker();
   try {
     await loadCards();
-  populateSetFilter();
-  populateClassFilter();
-  populateTraitFilter();
-  populateCardTypeFilter();
-  populateStatFilters();
-  populateArtistFilter();
-  populateRarityFilter();
+    populateSetFilter();
+    populateClassFilter();
+    populateTraitFilter();
+    populateCardTypeFilter();
+    populateStatFilters();
+    populateArtistFilter();
+    populateRarityFilter();
+    requestDeckFileList();
     renderTable();
     if (rarityOutliers.length) {
       console.warn("Rarity outliers detected and left uncategorized:", rarityOutliers);
