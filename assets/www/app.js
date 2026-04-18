@@ -1525,6 +1525,20 @@ function deckDisplayLabelForCard(card) {
   return canonicalDeckCardName(card.name);
 }
 
+function deckDisplayLabelForEntry(entry) {
+  if (!entry) return "";
+  if (entry.mode === "evolved") return `${entry.displayName} (Evolved)`;
+  if (entry.mode === "advanced") return `${entry.displayName} (Advanced)`;
+  return entry.displayName;
+}
+
+function serializeDeckRequirements(requirements) {
+  return [...requirements.values()]
+    .sort((a, b) => a.order - b.order || a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }))
+    .map((entry) => `${entry.quantity} ${deckDisplayLabelForEntry(entry)}`)
+    .join("\n");
+}
+
 function populateDeckFilter(fileNames = []) {
   if (!deckFilter) return;
   availableDeckFiles = [...new Set(fileNames)].sort((a, b) => {
@@ -1567,11 +1581,12 @@ function clearActiveDeck({ keepSelection = false } = {}) {
 
 function applyDeckListText(textContent, fileName, { silent = false } = {}) {
   const parsed = parseDeckListText(textContent);
+  const normalizedText = serializeDeckRequirements(parsed.requirements);
   activeDeck = {
     fileName: fileName || "",
     requirements: parsed.requirements,
     unmatchedEntries: parsed.unmatchedEntries,
-    textContent: String(textContent || ""),
+    textContent: normalizedText ? `${normalizedText}\n` : "",
   };
   if (deckFilter) {
     deckFilter.value = fileName || "";
