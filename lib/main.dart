@@ -195,6 +195,9 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
           .where((entry) => entry is File && entry.path.toLowerCase().endsWith('.txt'))
           .cast<File>()
           .toList();
+      for (final file in files) {
+        await _normalizeDeckFile(file);
+      }
       files.sort((a, b) {
         final aName = a.uri.pathSegments.last.toLowerCase();
         final bName = b.uri.pathSegments.last.toLowerCase();
@@ -244,7 +247,7 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
         return;
       }
 
-      final textContent = await file.readAsString();
+      final textContent = await _normalizeDeckFile(file);
       await _sendJsCallback(
         '__sveNativeDeckImportResult',
         {
@@ -396,14 +399,11 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
       }
 
       final textContent = (message['textContent'] ?? '').toString();
-      final normalized = textContent.replaceAll('\r\n', '\n');
       final dir = await _resolveStorageDir(_deckFolderName);
       await _ensureDefaultDeckFile(dir);
       final file = File('${dir.path}/$fileName');
-      await file.writeAsString(
-        normalized.isEmpty ? '' : normalized.trimRight() + '\n',
-        flush: true,
-      );
+      await file.writeAsString(textContent.replaceAll('\r\n', '\n'), flush: true);
+      final normalized = await _normalizeDeckFile(file);
 
       await _sendJsCallback(
         '__sveNativeDeckReplaceResult',
@@ -411,7 +411,7 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
           'ok': true,
           'fileName': file.uri.pathSegments.last,
           'path': file.path,
-          'textContent': await file.readAsString(),
+          'textContent': normalized,
         },
       );
     } catch (e) {
@@ -530,6 +530,116 @@ Future<void> _ensureDefaultDeckFile(Directory dir) async {
   }
 }
 
+String _canonicalDeckCardName(String value) {
+  return value
+      .replaceAll(RegExp(r'\s+\((Evolved|Advanced)\)\s*$', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+}
+
+String _deckModeFromText(String value) {
+  final trimmed = value.trim();
+  if (RegExp(r'\(Advanced\)\s*$', caseSensitive: false).hasMatch(trimmed)) {
+    return 'advanced';
+  }
+  if (RegExp(r'\(Evolved\)\s*$', caseSensitive: false).hasMatch(trimmed)) {
+    return 'evolved';
+  }
+  return 'base';
+}
+
+String _deckDisplayLabel(String displayName, String mode) {
+  switch (mode) {
+    case 'evolved':
+      return '$displayName (Evolved)';
+    case 'advanced':
+      return '$displayName (Advanced)';
+    default:
+      return displayName;
+  }
+}
+
+String _deckEntryKey(String value) {
+  final mode = _deckModeFromText(value);
+  final displayName = _canonicalDeckCardName(value).toLowerCase();
+  return '$displayName::$mode';
+}
+
+class _DeckEntryRecord {
+  _DeckEntryRecord({
+    required this.displayName,
+    required this.mode,
+    required this.quantity,
+    required this.order,
+  });
+
+  final String displayName;
+  final String mode;
+  final int quantity;
+  final int order;
+
+  String get label => _deckDisplayLabel(displayName, mode);
+}
+
+Map<String, _DeckEntryRecord> _parseDeckText(String text) {
+  final entries = <String, _DeckEntryRecord>{};
+  var orderCounter = 0;
+  final lines = text.split(RegExp(r'\r?\n'));
+
+  for (final line in lines) {
+    final raw = line.trim();
+    if (raw.isEmpty || raw.startsWith('#') || raw.startsWith('//')) continue;
+    final match = RegExp(r'^\s*(\d+)\s*x?\s+(.+?)\s*$').firstMatch(raw);
+    if (match == null) continue;
+
+    final qty = int.tryParse(match.group(1) ?? '') ?? 0;
+    final name = (match.group(2) ?? '').trim();
+    if (qty <= 0 || name.isEmpty) continue;
+
+    final mode = _deckModeFromText(name);
+    final displayName = _canonicalDeckCardName(name);
+    final key = _deckEntryKey(name);
+    final existing = entries[key];
+    if (existing == null) {
+      entries[key] = _DeckEntryRecord(
+        displayName: displayName,
+        mode: mode,
+        quantity: qty,
+        order: orderCounter++,
+      );
+    } else {
+      entries[key] = _DeckEntryRecord(
+        displayName: existing.displayName,
+        mode: existing.mode,
+        quantity: existing.quantity + qty,
+        order: existing.order,
+      );
+    }
+  }
+
+  return entries;
+}
+
+String _serializeDeckEntries(Map<String, _DeckEntryRecord> entries) {
+  final lines = entries.values.toList()
+    ..sort((a, b) {
+      final byOrder = a.order.compareTo(b.order);
+      if (byOrder != 0) return byOrder;
+      return a.label.toLowerCase().compareTo(b.label.toLowerCase());
+    });
+
+  if (lines.isEmpty) return '';
+  return '${lines.map((entry) => '${entry.quantity} ${entry.label}').join('\n')}\n';
+}
+
+Future<String> _normalizeDeckFile(File file) async {
+  final normalized = _serializeDeckEntries(
+    _parseDeckText(await file.readAsString()),
+  );
+  await file.writeAsString(normalized, flush: true);
+  return normalized;
+}
+
 String _sanitizeDeckFileName(String value) {
   final trimmed = value.trim();
   if (trimmed.isEmpty) return '';
@@ -539,39 +649,25 @@ String _sanitizeDeckFileName(String value) {
 }
 
 Future<String> _updateDeckFileEntry(File file, String entryLabel, int delta) async {
-  final lines = await file.readAsLines();
-  final updated = <String>[];
-  var found = false;
+  final entries = _parseDeckText(await file.readAsString());
+  final key = _deckEntryKey(entryLabel);
+  final existing = entries[key];
+  final nextQty = (existing?.quantity ?? 0) + delta;
 
-  for (final rawLine in lines) {
-    final line = rawLine.trimRight();
-    final match = RegExp(r'^\s*(\d+)\s*x?\s+(.+?)\s*$').firstMatch(line);
-    if (match == null) {
-      if (rawLine.trim().isNotEmpty) updated.add(rawLine);
-      continue;
-    }
-
-    final qty = int.tryParse(match.group(1) ?? '') ?? 0;
-    final name = (match.group(2) ?? '').trim();
-    if (!found && name == entryLabel) {
-      found = true;
-      final nextQty = qty + delta;
-      if (nextQty > 0) {
-        updated.add('$nextQty $entryLabel');
-      }
-      continue;
-    }
-
-    updated.add(rawLine);
+  if (nextQty > 0) {
+    entries[key] = _DeckEntryRecord(
+      displayName: existing?.displayName ?? _canonicalDeckCardName(entryLabel),
+      mode: existing?.mode ?? _deckModeFromText(entryLabel),
+      quantity: nextQty,
+      order: existing?.order ?? entries.length,
+    );
+  } else {
+    entries.remove(key);
   }
 
-  if (!found && delta > 0) {
-    updated.add('${delta} $entryLabel');
-  }
-
-  final text = updated.where((line) => line.trim().isNotEmpty).join('\n');
-  await file.writeAsString(text.isEmpty ? '' : '$text\n', flush: true);
-  return file.readAsString();
+  final normalized = _serializeDeckEntries(entries);
+  await file.writeAsString(normalized, flush: true);
+  return normalized;
 }
 
 class NativeCardScannerPage extends StatefulWidget {
