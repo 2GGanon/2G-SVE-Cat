@@ -634,6 +634,9 @@ const importBtn = document.getElementById("importBtn");
 const exportIncompleteBtn = document.getElementById("exportIncompleteBtn");
 const deckFilter = document.getElementById("deckFilter");
 const renameDeckBtn = document.getElementById("renameDeckBtn");
+const deckModeToggle = document.getElementById("deckModeToggle");
+const deckModeBuildBtn = document.getElementById("deckModeBuildBtn");
+const deckModeViewBtn = document.getElementById("deckModeViewBtn");
 const importInput = document.getElementById("importInput");
 const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
@@ -696,12 +699,13 @@ let scanCodeAliasMap = new Map();
 let scanNameAliasMap = new Map();
 let cardsByDeckGroupKey = new Map();
 let availableDeckFiles = [];
+let deckDisplayMode = "view";
+let pendingDeckImportSilent = false;
 let activeDeck = {
   fileName: "",
   requirements: new Map(),
   unmatchedEntries: [],
 };
-const LONG_PRESS_MS = 550;
 
 function prPromoSourceByCode(cardCode) {
   const normalized = normalizeCardCode(cardCode);
@@ -1065,12 +1069,16 @@ window.__sveNativeDeckImportResult = function __sveNativeDeckImportResult(payloa
   try {
     const payload = JSON.parse(String(payloadJson || "{}"));
     if (!payload.ok) {
+      pendingDeckImportSilent = false;
       alert(`Deck import failed: ${payload.error || "Unknown error"}`);
       if (deckFilter) deckFilter.value = activeDeck.fileName || "";
       return;
     }
-    applyDeckListText(payload.textContent || "", payload.fileName || "");
+    const silent = pendingDeckImportSilent;
+    pendingDeckImportSilent = false;
+    applyDeckListText(payload.textContent || "", payload.fileName || "", { silent });
   } catch {
+    pendingDeckImportSilent = false;
     alert("Deck import failed.");
     if (deckFilter) deckFilter.value = activeDeck.fileName || "";
   }
@@ -1085,6 +1093,7 @@ window.__sveNativeDeckRenameResult = function __sveNativeDeckRenameResult(payloa
     }
     requestDeckFileList();
     if (payload.newFileName) {
+      pendingDeckImportSilent = true;
       requestDeckImport(payload.newFileName);
     }
     alert(`Deck renamed to:\n${deckFileLabel(payload.newFileName || "")}`);
@@ -1102,7 +1111,7 @@ window.__sveNativeDeckMutationResult = function __sveNativeDeckMutationResult(pa
     }
     requestDeckFileList();
     if (activeDeck.fileName && payload.fileName === activeDeck.fileName && payload.textContent != null) {
-      applyDeckListText(payload.textContent, payload.fileName || activeDeck.fileName);
+      applyDeckListText(payload.textContent, payload.fileName || activeDeck.fileName, { silent: true });
     }
   } catch {
     alert("Deck update failed.");
@@ -1426,8 +1435,40 @@ function ownedTotalForDeckKey(deckKey) {
   return variants.reduce((sum, card) => sum + ownedFor(card.code), 0);
 }
 
-function isDeckFilterActive() {
-  return activeDeck.requirements.size > 0;
+function isDeckSelected() {
+  return Boolean(activeDeck.fileName);
+}
+
+function isDeckViewMode() {
+  return isDeckSelected() && deckDisplayMode === "view";
+}
+
+function displayedRowCountForCard(card) {
+  return isDeckSelected() ? deckRequirementForCard(card) : ownedFor(card.code);
+}
+
+function updateDeckModeUi() {
+  if (deckModeToggle) {
+    deckModeToggle.classList.toggle("disabled", !isDeckSelected());
+    deckModeToggle.classList.toggle("build", deckDisplayMode === "build");
+    deckModeToggle.classList.toggle("view", deckDisplayMode !== "build");
+  }
+  if (deckModeBuildBtn) {
+    deckModeBuildBtn.classList.toggle("active", deckDisplayMode === "build");
+    deckModeBuildBtn.setAttribute("aria-pressed", String(deckDisplayMode === "build"));
+    deckModeBuildBtn.disabled = !isDeckSelected();
+  }
+  if (deckModeViewBtn) {
+    deckModeViewBtn.classList.toggle("active", deckDisplayMode === "view");
+    deckModeViewBtn.setAttribute("aria-pressed", String(deckDisplayMode === "view"));
+    deckModeViewBtn.disabled = !isDeckSelected();
+  }
+}
+
+function setDeckDisplayMode(mode) {
+  deckDisplayMode = mode === "build" ? "build" : "view";
+  updateDeckModeUi();
+  renderTable();
 }
 
 function applyDeckStateToRow(tr, card) {
@@ -1494,10 +1535,11 @@ function clearActiveDeck({ keepSelection = false } = {}) {
   if (deckFilter && !keepSelection) {
     deckFilter.value = "";
   }
+  updateDeckModeUi();
   renderTable();
 }
 
-function applyDeckListText(textContent, fileName) {
+function applyDeckListText(textContent, fileName, { silent = false } = {}) {
   const parsed = parseDeckListText(textContent);
   activeDeck = {
     fileName: fileName || "",
@@ -1507,44 +1549,16 @@ function applyDeckListText(textContent, fileName) {
   if (deckFilter) {
     deckFilter.value = fileName || "";
   }
+  updateDeckModeUi();
   renderTable();
+
+  if (silent) return;
 
   const matchedEntries = [...parsed.requirements.entries()].filter(([key]) => cardsByDeckGroupKey.has(key)).length;
   const unmatchedSummary = parsed.unmatchedEntries.length
     ? `\nUnmatched entries: ${parsed.unmatchedEntries.length}`
     : "";
   alert(`Deck loaded: ${deckFileLabel(fileName || "Custom Deck")}\nMatched entries: ${matchedEntries}${unmatchedSummary}`);
-}
-
-function promptDeckFileSelection(defaultFileName = "") {
-  if (!availableDeckFiles.length) {
-    alert("No deck list files are available.");
-    return null;
-  }
-
-  const deckList = availableDeckFiles
-    .map((fileName, index) => `${index + 1}. ${deckFileLabel(fileName)}`)
-    .join("\n");
-  const suggestedValue = defaultFileName && availableDeckFiles.includes(defaultFileName)
-    ? defaultFileName
-    : availableDeckFiles[0];
-  const response = window.prompt(
-    `Choose a deck file by number or file name:\n\n${deckList}`,
-    suggestedValue
-  );
-  if (response == null) return null;
-  const trimmed = response.trim();
-  if (!trimmed) return null;
-  const asNumber = Number.parseInt(trimmed, 10);
-  if (Number.isFinite(asNumber) && String(asNumber) === trimmed) {
-    return availableDeckFiles[asNumber - 1] || null;
-  }
-  const directMatch = availableDeckFiles.find((fileName) => fileName.toLowerCase() === trimmed.toLowerCase());
-  if (directMatch) return directMatch;
-  const labelMatch = availableDeckFiles.find((fileName) => deckFileLabel(fileName).toLowerCase() === trimmed.toLowerCase());
-  if (labelMatch) return labelMatch;
-  alert("That deck file was not found.");
-  return null;
 }
 
 function requestRenameDeck(fileName, newFileName) {
@@ -1579,30 +1593,6 @@ function promptRenameSelectedDeck() {
   }
 }
 
-function handleDeckLongPress(card) {
-  if (isDeckFilterActive()) {
-    if (!activeDeck.fileName) return;
-    const confirmed = window.confirm(
-      `Remove 1x ${deckDisplayLabelForCard(card)} from ${deckFileLabel(activeDeck.fileName)}?`
-    );
-    if (!confirmed) return;
-    if (!requestDeckMutation("remove", activeDeck.fileName, card)) {
-      alert("Deck editing is only available in the Android app build.");
-    }
-    return;
-  }
-
-  const targetDeck = promptDeckFileSelection(deckFilter ? deckFilter.value : "");
-  if (!targetDeck) return;
-  const confirmed = window.confirm(
-    `Add 1x ${deckDisplayLabelForCard(card)} to ${deckFileLabel(targetDeck)}?`
-  );
-  if (!confirmed) return;
-  if (!requestDeckMutation("add", targetDeck, card)) {
-    alert("Deck editing is only available in the Android app build.");
-  }
-}
-
 function requestDeckFileList() {
   if (!nativePost({ type: "list_deck_lists" })) {
     populateDeckFilter([]);
@@ -1615,6 +1605,7 @@ function requestDeckImport(fileName) {
     return;
   }
   if (!nativePost({ type: "import_deck_list", fileName })) {
+    pendingDeckImportSilent = false;
     alert("Deck list import is only available in the Android app build.");
   }
 }
@@ -1651,9 +1642,6 @@ function populateSetFilter() {
     opt.textContent = setLabel(setCode);
     setFilter.appendChild(opt);
   });
-  if (sets.includes("BP01")) {
-    setFilter.value = "BP01";
-  }
 }
 
 function populateClassFilter() {
@@ -1814,7 +1802,7 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   if (requireOwned && qty === 0) return false;
   if (requireIncomplete && qty >= playsetLimit) return false;
   if (requireExtra && qty <= playsetLimit) return false;
-  if (isDeckFilterActive() && deckRequirement === 0) return false;
+  if (isDeckViewMode() && deckRequirement === 0) return false;
   if (!text) return true;
   return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
 }
@@ -1823,7 +1811,7 @@ function filteredCards() {
   const set = setFilter.value;
   const rows = cards.filter((card) => matchesActiveFilters(card));
 
-  if (isDeckFilterActive()) {
+  if (isDeckViewMode()) {
     rows.sort((a, b) => {
       const aEntry = activeDeck.requirements.get(deckGroupKeyForCard(a));
       const bEntry = activeDeck.requirements.get(deckGroupKeyForCard(b));
@@ -2067,39 +2055,13 @@ function createRow(card) {
   tr.dataset.cardCode = card.code;
   const qtyEl = fragment.querySelector(".qty-value");
   const artEl = fragment.querySelector(".card-art");
+  const deckCountBadge = fragment.querySelector(".deck-count-badge");
   const dualBtn = fragment.querySelector(".dual-toggle");
   const faces = cardFaces(card);
   let faceIndex = 0;
-  let longPressTimer = null;
-  let longPressTriggered = false;
   setCardFace(artEl, card, faces[faceIndex]);
   artEl.addEventListener("click", () => {
-    if (longPressTriggered) {
-      longPressTriggered = false;
-      return;
-    }
     openZoomFor(artEl);
-  });
-
-  function clearLongPress() {
-    if (longPressTimer) {
-      window.clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-  }
-
-  artEl.addEventListener("pointerdown", (ev) => {
-    if (ev.button !== 0) return;
-    longPressTriggered = false;
-    clearLongPress();
-    longPressTimer = window.setTimeout(() => {
-      longPressTimer = null;
-      longPressTriggered = true;
-      handleDeckLongPress(card);
-    }, LONG_PRESS_MS);
-  });
-  ["pointerup", "pointerleave", "pointercancel", "dragstart"].forEach((eventName) => {
-    artEl.addEventListener(eventName, clearLongPress);
   });
 
   if (faces.length > 1) {
@@ -2116,8 +2078,17 @@ function createRow(card) {
   fragment.querySelector(".card-code").textContent = card.code;
   fragment.querySelector(".card-set").textContent = card.setCode;
   fragment.querySelector(".promo-source").textContent = card.promoSource;
-  qtyEl.textContent = String(ownedFor(card.code));
-  applyDeckStateToRow(tr, card);
+  syncDeckPresentation();
+
+  function syncDeckPresentation() {
+    const deckQty = deckRequirementForCard(card);
+    qtyEl.textContent = String(displayedRowCountForCard(card));
+    if (deckCountBadge) {
+      deckCountBadge.textContent = String(deckQty);
+      deckCountBadge.classList.toggle("hidden", !isDeckSelected() || deckQty <= 0);
+    }
+    applyDeckStateToRow(tr, card);
+  }
 
   function updateOwnedCount(delta) {
     const wasVisible = matchesActiveFilters(card);
@@ -2135,11 +2106,28 @@ function createRow(card) {
     refreshRenderedDeckStateForKey(deckGroupKeyForCard(card));
   }
 
+  function updateDeckCount(delta) {
+    if (!isDeckSelected() || !activeDeck.fileName) return;
+    if (delta < 0 && deckRequirementForCard(card) <= 0) return;
+    const action = delta > 0 ? "add" : "remove";
+    if (!requestDeckMutation(action, activeDeck.fileName, card)) {
+      alert("Deck editing is only available in the Android app build.");
+    }
+  }
+
   fragment.querySelector(".dec").addEventListener("click", () => {
+    if (isDeckSelected()) {
+      updateDeckCount(-1);
+      return;
+    }
     updateOwnedCount(-1);
   });
 
   fragment.querySelector(".inc").addEventListener("click", () => {
+    if (isDeckSelected()) {
+      updateDeckCount(1);
+      return;
+    }
     updateOwnedCount(1);
   });
 
@@ -2528,6 +2516,18 @@ function bindEvents() {
       promptRenameSelectedDeck();
     });
   }
+  if (deckModeBuildBtn) {
+    deckModeBuildBtn.addEventListener("click", () => {
+      if (!isDeckSelected()) return;
+      setDeckDisplayMode("build");
+    });
+  }
+  if (deckModeViewBtn) {
+    deckModeViewBtn.addEventListener("click", () => {
+      if (!isDeckSelected()) return;
+      setDeckDisplayMode("view");
+    });
+  }
   if (deckFilter) {
     deckFilter.addEventListener("change", () => {
       requestDeckImport(deckFilter.value);
@@ -2579,6 +2579,7 @@ async function start() {
   }
   updateSidebarState();
   updateActionsSidebarState();
+  updateDeckModeUi();
   registerServiceWorker();
   try {
     await loadCards();

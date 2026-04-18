@@ -123,6 +123,13 @@
               <option value="">No Deck</option>
             </select>
           </label>
+          <div class="control deck-mode-control">
+            <span>Deck Mode</span>
+            <div id="deckModeToggle" class="deck-mode-toggle view" role="group" aria-label="Deck mode">
+              <button id="deckModeBuildBtn" class="deck-mode-btn" type="button" aria-pressed="false">Build</button>
+              <button id="deckModeViewBtn" class="deck-mode-btn" type="button" aria-pressed="true">View</button>
+            </div>
+          </div>
           <button id="renameDeckBtn" type="button">Rename Deck</button>
           <button id="exportBtn" type="button">Export Collection</button>
           <button id="importBtn" type="button">Import Collection</button>
@@ -170,6 +177,7 @@
         <td class="card-art-cell">
           <div class="art-wrap">
             <img class="card-art" alt="Card art" loading="lazy" />
+            <span class="deck-count-badge hidden">0</span>
             <button class="dual-toggle hidden" type="button" title="Switch card side" aria-label="Switch card side">&#8645;</button>
           </div>
           <div class="owned-controls">
