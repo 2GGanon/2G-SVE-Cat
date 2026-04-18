@@ -382,6 +382,46 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
     }
   }
 
+  Future<void> _handleDeckReplace(Map<String, dynamic> message) async {
+    try {
+      final fileName = _sanitizeDeckFileName(
+        (message['fileName'] ?? '').toString().trim(),
+      );
+      if (fileName.isEmpty) {
+        await _sendJsCallback(
+          '__sveNativeDeckReplaceResult',
+          {'ok': false, 'error': 'A valid deck file name is required.'},
+        );
+        return;
+      }
+
+      final textContent = (message['textContent'] ?? '').toString();
+      final normalized = textContent.replaceAll('\r\n', '\n');
+      final dir = await _resolveStorageDir(_deckFolderName);
+      await _ensureDefaultDeckFile(dir);
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsString(
+        normalized.isEmpty ? '' : normalized.trimRight() + '\n',
+        flush: true,
+      );
+
+      await _sendJsCallback(
+        '__sveNativeDeckReplaceResult',
+        {
+          'ok': true,
+          'fileName': file.uri.pathSegments.last,
+          'path': file.path,
+          'textContent': await file.readAsString(),
+        },
+      );
+    } catch (e) {
+      await _sendJsCallback(
+        '__sveNativeDeckReplaceResult',
+        {'ok': false, 'error': e.toString()},
+      );
+    }
+  }
+
   Future<List<ScannerCardRecord>> _loadScannerCatalogue() async {
     final csvText = await rootBundle.loadString('assets/www/data/shadowverse-evolve-card-catalog.csv');
     final rows = parseCsv(csvText);
@@ -431,6 +471,8 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
         await _handleDeckMutation(parsed, add: true);
       } else if (type == 'remove_card_from_deck') {
         await _handleDeckMutation(parsed, add: false);
+      } else if (type == 'replace_deck_list') {
+        await _handleDeckReplace(parsed);
       } else if (type == 'scan_card') {
         await _handleScanCard();
       } else if (type == 'haptic_feedback') {

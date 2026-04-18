@@ -634,10 +634,17 @@ const importBtn = document.getElementById("importBtn");
 const exportIncompleteBtn = document.getElementById("exportIncompleteBtn");
 const deckFilter = document.getElementById("deckFilter");
 const renameDeckBtn = document.getElementById("renameDeckBtn");
+const copyDeckBtn = document.getElementById("copyDeckBtn");
+const pasteDeckBtn = document.getElementById("pasteDeckBtn");
 const deckModeToggle = document.getElementById("deckModeToggle");
 const deckModeBuildBtn = document.getElementById("deckModeBuildBtn");
 const deckModeViewBtn = document.getElementById("deckModeViewBtn");
 const importInput = document.getElementById("importInput");
+const deckPasteBackdrop = document.getElementById("deckPasteBackdrop");
+const deckPasteModal = document.getElementById("deckPasteModal");
+const deckPasteInput = document.getElementById("deckPasteInput");
+const deckPasteCancelBtn = document.getElementById("deckPasteCancelBtn");
+const deckPasteConfirmBtn = document.getElementById("deckPasteConfirmBtn");
 const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
 const legalToggle = document.getElementById("legalToggle");
@@ -705,6 +712,7 @@ let activeDeck = {
   fileName: "",
   requirements: new Map(),
   unmatchedEntries: [],
+  textContent: "",
 };
 
 function prPromoSourceByCode(cardCode) {
@@ -747,7 +755,7 @@ function setScanBusy(isBusy) {
   scanInFlight = isBusy;
   if (!scanBtn) return;
   scanBtn.disabled = isBusy;
-  scanBtn.textContent = isBusy ? "Scanning..." : "Scan Card";
+  scanBtn.classList.toggle("is-busy", isBusy);
 }
 
 function normalizeScanText(value) {
@@ -1118,6 +1126,23 @@ window.__sveNativeDeckMutationResult = function __sveNativeDeckMutationResult(pa
   }
 };
 
+window.__sveNativeDeckReplaceResult = function __sveNativeDeckReplaceResult(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (!payload.ok) {
+      alert(`Deck paste failed: ${payload.error || "Unknown error"}`);
+      return;
+    }
+    closeDeckPasteModal();
+    requestDeckFileList();
+    pendingDeckImportSilent = true;
+    requestDeckImport(payload.fileName || "Deck 1.txt");
+    alert(`Deck 1 imported from pasted text.`);
+  } catch {
+    alert("Deck paste failed.");
+  }
+};
+
 window.__sveNativeScanResult = function __sveNativeScanResult(payloadJson) {
   setScanBusy(false);
   try {
@@ -1444,7 +1469,7 @@ function isDeckViewMode() {
 }
 
 function displayedRowCountForCard(card) {
-  return isDeckSelected() ? deckRequirementForCard(card) : ownedFor(card.code);
+  return ownedFor(card.code);
 }
 
 function updateDeckModeUi() {
@@ -1531,6 +1556,7 @@ function clearActiveDeck({ keepSelection = false } = {}) {
     fileName: "",
     requirements: new Map(),
     unmatchedEntries: [],
+    textContent: "",
   };
   if (deckFilter && !keepSelection) {
     deckFilter.value = "";
@@ -1545,6 +1571,7 @@ function applyDeckListText(textContent, fileName, { silent = false } = {}) {
     fileName: fileName || "",
     requirements: parsed.requirements,
     unmatchedEntries: parsed.unmatchedEntries,
+    textContent: String(textContent || ""),
   };
   if (deckFilter) {
     deckFilter.value = fileName || "";
@@ -1573,6 +1600,65 @@ function requestDeckMutation(action, fileName, card) {
     deckEntryLabel: deckDisplayLabelForCard(card),
     mode: deckModeForCard(card),
   });
+}
+
+function requestDeckReplace(fileName, textContent) {
+  return nativePost({ type: "replace_deck_list", fileName, textContent });
+}
+
+async function copyDeckToClipboard() {
+  if (!isDeckSelected()) {
+    alert("Select a deck list first.");
+    return;
+  }
+  const deckText = String(activeDeck.textContent || "");
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(deckText);
+    } else {
+      const helper = document.createElement("textarea");
+      helper.value = deckText;
+      helper.setAttribute("readonly", "");
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.appendChild(helper);
+      helper.select();
+      document.execCommand("copy");
+      helper.remove();
+    }
+    alert(`Copied ${deckFileLabel(activeDeck.fileName)} to the clipboard.`);
+  } catch {
+    alert("Copying the deck failed on this device.");
+  }
+}
+
+function updateDeckPasteModalState(open) {
+  if (!deckPasteModal || !deckPasteBackdrop) return;
+  deckPasteModal.classList.toggle("hidden", !open);
+  deckPasteBackdrop.classList.toggle("hidden", !open);
+  if (open && deckPasteInput) {
+    deckPasteInput.focus();
+    deckPasteInput.select();
+  }
+}
+
+function openDeckPasteModal() {
+  if (!deckPasteInput) return;
+  deckPasteInput.value = "";
+  updateDeckPasteModalState(true);
+}
+
+function closeDeckPasteModal() {
+  updateDeckPasteModalState(false);
+}
+
+function importPastedDeckToDefault() {
+  if (!deckPasteInput) return;
+  const deckText = deckPasteInput.value.replace(/\r\n/g, "\n");
+  if (!requestDeckReplace("Deck 1.txt", deckText)) {
+    alert("Deck pasting is only available in the Android app build.");
+    return;
+  }
 }
 
 function promptRenameSelectedDeck() {
@@ -2516,6 +2602,16 @@ function bindEvents() {
       promptRenameSelectedDeck();
     });
   }
+  if (copyDeckBtn) {
+    copyDeckBtn.addEventListener("click", () => {
+      copyDeckToClipboard();
+    });
+  }
+  if (pasteDeckBtn) {
+    pasteDeckBtn.addEventListener("click", () => {
+      openDeckPasteModal();
+    });
+  }
   if (deckModeBuildBtn) {
     deckModeBuildBtn.addEventListener("click", () => {
       if (!isDeckSelected()) return;
@@ -2545,6 +2641,24 @@ function bindEvents() {
     const file = importInput.files?.[0];
     if (file) importCollection(file);
     importInput.value = "";
+  });
+  if (deckPasteBackdrop) {
+    deckPasteBackdrop.addEventListener("click", () => {
+      closeDeckPasteModal();
+    });
+  }
+  if (deckPasteCancelBtn) {
+    deckPasteCancelBtn.addEventListener("click", () => {
+      closeDeckPasteModal();
+    });
+  }
+  if (deckPasteConfirmBtn) {
+    deckPasteConfirmBtn.addEventListener("click", () => {
+      importPastedDeckToDefault();
+    });
+  }
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") closeDeckPasteModal();
   });
   document.body.addEventListener(
     "pointerdown",

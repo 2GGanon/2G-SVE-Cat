@@ -475,6 +475,57 @@ body.actions-sidebar-hidden .layout {
   align-content: start;
 }
 
+.deck-utility-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.deck-paste-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1250;
+  width: min(30rem, calc(100vw - 1.6rem));
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(10, 18, 36, 0.98);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42);
+}
+
+.deck-paste-modal h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+}
+
+.deck-paste-modal p {
+  margin: 0 0 0.7rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.deck-paste-modal textarea {
+  width: 100%;
+  min-height: 11rem;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem;
+  font: inherit;
+  background: #0f1b34;
+  color: var(--text);
+}
+
+.deck-paste-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+}
+
 .scan-fab {
   position: fixed;
   left: 50%;

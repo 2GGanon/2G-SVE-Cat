@@ -130,6 +130,10 @@
               <button id="deckModeViewBtn" class="deck-mode-btn" type="button" aria-pressed="true">View</button>
             </div>
           </div>
+          <div class="deck-utility-row">
+            <button id="copyDeckBtn" type="button">Copy Deck</button>
+            <button id="pasteDeckBtn" type="button">Paste Deck</button>
+          </div>
           <button id="renameDeckBtn" type="button">Rename Deck</button>
           <button id="exportBtn" type="button">Export Collection</button>
           <button id="importBtn" type="button">Import Collection</button>
@@ -156,6 +160,17 @@
         </table>
       </section>
     </main>
+
+    <div id="deckPasteBackdrop" class="legal-backdrop hidden"></div>
+    <div id="deckPasteModal" class="deck-paste-modal hidden" role="dialog" aria-modal="true" aria-labelledby="deckPasteTitle">
+      <h2 id="deckPasteTitle">Paste Deck into Deck 1</h2>
+      <p>Paste a deck list here. This will replace the current contents of <strong>Deck 1</strong>.</p>
+      <textarea id="deckPasteInput" spellcheck="false" placeholder="3 Sekka, Fatebound Fox&#10;1 Salvia Panther (Evolved)"></textarea>
+      <div class="deck-paste-actions">
+        <button id="deckPasteCancelBtn" type="button">Cancel</button>
+        <button id="deckPasteConfirmBtn" type="button">Import to Deck 1</button>
+      </div>
+    </div>
 
     <button id="scanBtn" class="scan-fab" type="button" aria-label="Scan card">
       <svg
