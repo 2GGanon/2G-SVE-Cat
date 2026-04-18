@@ -477,8 +477,20 @@ body.actions-sidebar-hidden .layout {
 
 .deck-utility-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   gap: 0.45rem;
+  align-items: stretch;
+}
+
+.deck-delete-btn {
+  min-width: 2.4rem;
+  padding-inline: 0.4rem;
+}
+
+.deck-delete-btn span {
+  display: inline-block;
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .deck-paste-modal {
@@ -787,6 +799,25 @@ body.zoom-active .zoom-nav {
   color: #e4ecff;
   font-size: 0.8rem;
   line-height: 1.25;
+  z-index: 1300;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.zoom-owned-info {
+  position: fixed;
+  left: 50%;
+  bottom: 4rem;
+  transform: translateX(-50%);
+  min-width: 84px;
+  max-width: min(70vw, 200px);
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #8ca6df;
+  background: rgba(8, 14, 30, 0.95);
+  color: #e4ecff;
+  font-size: 0.82rem;
+  line-height: 1.2;
   z-index: 1300;
   text-align: center;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);

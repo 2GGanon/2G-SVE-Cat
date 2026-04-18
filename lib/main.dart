@@ -422,6 +422,61 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
     }
   }
 
+  Future<void> _handleDeckDelete(Map<String, dynamic> message) async {
+    try {
+      final fileName = _sanitizeDeckFileName(
+        (message['fileName'] ?? '').toString().trim(),
+      );
+      if (fileName.isEmpty) {
+        await _sendJsCallback(
+          '__sveNativeDeckDeleteResult',
+          {'ok': false, 'error': 'A valid deck file name is required.'},
+        );
+        return;
+      }
+
+      final dir = await _resolveStorageDir(_deckFolderName);
+      await _ensureDefaultDeckFile(dir);
+      final file = File('${dir.path}/$fileName');
+      if (!await file.exists()) {
+        await _sendJsCallback(
+          '__sveNativeDeckDeleteResult',
+          {'ok': false, 'error': 'The selected deck file was not found.'},
+        );
+        return;
+      }
+
+      if (fileName.toLowerCase() == kDefaultDeckFileName.toLowerCase()) {
+        await file.writeAsString('', flush: true);
+        await _sendJsCallback(
+          '__sveNativeDeckDeleteResult',
+          {
+            'ok': true,
+            'fileName': kDefaultDeckFileName,
+            'message': 'Deck 1 was cleared.',
+          },
+        );
+        return;
+      }
+
+      await file.delete();
+      await _ensureDefaultDeckFile(dir);
+      await _sendJsCallback(
+        '__sveNativeDeckDeleteResult',
+        {
+          'ok': true,
+          'fileName': kDefaultDeckFileName,
+          'message': 'Deck deleted.',
+        },
+      );
+    } catch (e) {
+      await _sendJsCallback(
+        '__sveNativeDeckDeleteResult',
+        {'ok': false, 'error': e.toString()},
+      );
+    }
+  }
+
   Future<List<ScannerCardRecord>> _loadScannerCatalogue() async {
     final csvText = await rootBundle.loadString('assets/www/data/shadowverse-evolve-card-catalog.csv');
     final rows = parseCsv(csvText);
@@ -473,6 +528,8 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
         await _handleDeckMutation(parsed, add: false);
       } else if (type == 'replace_deck_list') {
         await _handleDeckReplace(parsed);
+      } else if (type == 'delete_deck_list') {
+        await _handleDeckDelete(parsed);
       } else if (type == 'scan_card') {
         await _handleScanCard();
       } else if (type == 'haptic_feedback') {

@@ -636,6 +636,7 @@ const deckFilter = document.getElementById("deckFilter");
 const renameDeckBtn = document.getElementById("renameDeckBtn");
 const copyDeckBtn = document.getElementById("copyDeckBtn");
 const pasteDeckBtn = document.getElementById("pasteDeckBtn");
+const deleteDeckBtn = document.getElementById("deleteDeckBtn");
 const deckModeToggle = document.getElementById("deckModeToggle");
 const deckModeBuildBtn = document.getElementById("deckModeBuildBtn");
 const deckModeViewBtn = document.getElementById("deckModeViewBtn");
@@ -698,6 +699,7 @@ let zoomState = { cards: [], index: -1, anchorEl: null, anchorCode: "" };
 let zoomNavLeft = null;
 let zoomNavRight = null;
 let zoomPromoInfo = null;
+let zoomOwnedInfo = null;
 let rarityOutliers = [];
 let dualGroupByCode = new Map();
 let appliedSearchText = "";
@@ -735,6 +737,17 @@ function updateZoomPromoInfo(card) {
   }
   zoomPromoInfo.textContent = `Promo Source: ${source}`;
   zoomPromoInfo.classList.remove("hidden");
+}
+
+function updateZoomOwnedInfo(card) {
+  if (!zoomOwnedInfo) return;
+  if (!isDeckViewMode() || !card) {
+    zoomOwnedInfo.classList.add("hidden");
+    zoomOwnedInfo.textContent = "";
+    return;
+  }
+  zoomOwnedInfo.textContent = `Owned: ${ownedFor(card.code)}`;
+  zoomOwnedInfo.classList.remove("hidden");
 }
 
 function hasNativeBridge() {
@@ -1143,6 +1156,22 @@ window.__sveNativeDeckReplaceResult = function __sveNativeDeckReplaceResult(payl
   }
 };
 
+window.__sveNativeDeckDeleteResult = function __sveNativeDeckDeleteResult(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || "{}"));
+    if (!payload.ok) {
+      alert(`Deck delete failed: ${payload.error || "Unknown error"}`);
+      return;
+    }
+    requestDeckFileList();
+    pendingDeckImportSilent = true;
+    requestDeckImport("Deck 1.txt");
+    alert(payload.message || "Deck removed.");
+  } catch {
+    alert("Deck delete failed.");
+  }
+};
+
 window.__sveNativeScanResult = function __sveNativeScanResult(payloadJson) {
   setScanBusy(false);
   try {
@@ -1474,6 +1503,9 @@ function isDeckViewMode() {
 }
 
 function displayedRowCountForCard(card) {
+  if (isDeckViewMode()) {
+    return ownedTotalForDeckKey(deckGroupKeyForCard(card));
+  }
   return ownedFor(card.code);
 }
 
@@ -1535,6 +1567,22 @@ function deckDisplayLabelForEntry(entry) {
   if (entry.mode === "evolved") return `${entry.displayName} (Evolved)`;
   if (entry.mode === "advanced") return `${entry.displayName} (Advanced)`;
   return entry.displayName;
+}
+
+function compareDeckSortValue(a, b) {
+  const aTrim = String(a || "").trim();
+  const bTrim = String(b || "").trim();
+  const aNum = Number.parseInt(aTrim, 10);
+  const bNum = Number.parseInt(bTrim, 10);
+  const aIsNum = !Number.isNaN(aNum);
+  const bIsNum = !Number.isNaN(bNum);
+  if (aIsNum && bIsNum) return aNum - bNum;
+  if (aIsNum) return -1;
+  if (bIsNum) return 1;
+  if (!aTrim && !bTrim) return 0;
+  if (!aTrim) return 1;
+  if (!bTrim) return -1;
+  return aTrim.localeCompare(bTrim, undefined, { numeric: true, sensitivity: "base" });
 }
 
 function serializeDeckRequirements(requirements) {
@@ -1626,6 +1674,10 @@ function requestDeckReplace(fileName, textContent) {
   return nativePost({ type: "replace_deck_list", fileName, textContent });
 }
 
+function requestDeleteDeck(fileName) {
+  return nativePost({ type: "delete_deck_list", fileName });
+}
+
 async function copyDeckToClipboard() {
   if (!isDeckSelected()) {
     alert("Select a deck list first.");
@@ -1678,6 +1730,23 @@ function importPastedDeckToDefault() {
   if (!requestDeckReplace("Deck 1.txt", deckText)) {
     alert("Deck pasting is only available in the Android app build.");
     return;
+  }
+}
+
+function promptDeleteSelectedDeck() {
+  if (!isDeckSelected()) {
+    alert("Select a deck list first.");
+    return;
+  }
+  const isDefaultDeck = String(activeDeck.fileName || "").toLowerCase() === "deck 1.txt";
+  const confirmed = window.confirm(
+    isDefaultDeck
+      ? "Clear Deck 1? This will remove all cards from the default deck."
+      : `Delete ${deckFileLabel(activeDeck.fileName)}? This cannot be undone.`
+  );
+  if (!confirmed) return;
+  if (!requestDeleteDeck(activeDeck.fileName)) {
+    alert("Deck deletion is only available in the Android app build.");
   }
 }
 
@@ -1918,26 +1987,35 @@ function filteredCards() {
   const rows = cards.filter((card) => matchesActiveFilters(card));
 
   if (isDeckViewMode()) {
-    rows.sort((a, b) => {
-      const aEntry = activeDeck.requirements.get(deckGroupKeyForCard(a));
-      const bEntry = activeDeck.requirements.get(deckGroupKeyForCard(b));
-      const aName = canonicalDeckCardName(a.name);
-      const bName = canonicalDeckCardName(b.name);
+    const representativeByDeckKey = new Map();
+    rows.forEach((card) => {
+      const key = deckGroupKeyForCard(card);
+      if (!representativeByDeckKey.has(key)) {
+        representativeByDeckKey.set(key, card);
+      }
+    });
+
+    const deckRows = Array.from(representativeByDeckKey.values());
+    deckRows.sort((a, b) => {
       const aMode = deckModeForCard(a);
       const bMode = deckModeForCard(b);
-      const aOrder = aEntry?.order ?? Number.MAX_SAFE_INTEGER;
-      const bOrder = bEntry?.order ?? Number.MAX_SAFE_INTEGER;
-      const aModeRank = aMode === "base" ? 0 : aMode === "evolved" ? 1 : 2;
-      const bModeRank = bMode === "base" ? 0 : bMode === "evolved" ? 1 : 2;
+      const aModeBucket = aMode === "base" ? 0 : 1;
+      const bModeBucket = bMode === "base" ? 0 : 1;
+      const aModeRank = aMode === "evolved" ? 0 : aMode === "advanced" ? 1 : 2;
+      const bModeRank = bMode === "evolved" ? 0 : bMode === "advanced" ? 1 : 2;
 
       return (
-        aOrder - bOrder ||
-        aName.localeCompare(bName, undefined, { sensitivity: "base" }) ||
+        aModeBucket - bModeBucket ||
+        compareDeckSortValue(a.cardCost, b.cardCost) ||
+        a.setCode.localeCompare(b.setCode, undefined, { numeric: true, sensitivity: "base" }) ||
+        a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: "base" }) ||
         aModeRank - bModeRank ||
-        a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: "base" })
+        canonicalDeckCardName(a.name).localeCompare(canonicalDeckCardName(b.name), undefined, {
+          sensitivity: "base",
+        })
       );
     });
-    return rows;
+    return deckRows;
   }
 
   if (set === "PR") {
@@ -2027,6 +2105,10 @@ function closeZoom() {
     zoomPromoInfo.classList.add("hidden");
     zoomPromoInfo.textContent = "";
   }
+  if (zoomOwnedInfo) {
+    zoomOwnedInfo.classList.add("hidden");
+    zoomOwnedInfo.textContent = "";
+  }
   if (zoomState.anchorEl && zoomState.anchorCode) {
     const anchorCard = cards.find((c) => c.code === zoomState.anchorCode);
     if (anchorCard) applyArtToImage(zoomState.anchorEl, anchorCard);
@@ -2045,6 +2127,7 @@ function setZoomedElement(nextIndex) {
   zoomState.anchorEl.classList.add("zoomed");
   document.body.classList.add("zoom-active");
   updateZoomPromoInfo(zoomCard);
+  updateZoomOwnedInfo(zoomCard);
   updateZoomNavState();
 }
 
@@ -2066,8 +2149,9 @@ function openZoomFor(artEl) {
     (baseCard ? resolveFaceCard(baseCard, code) : null);
   if (!clickedCard) return;
 
-  // Use full dataset (not current set filter) and keep evolved/non-evolved separate.
-  const group = cards.filter((c) => c.name === clickedCard.name && c.isEvolved === clickedCard.isEvolved);
+  // Use full dataset (not current set filter) and keep base/evolved/advanced entries separate.
+  const groupKey = deckGroupKeyForCard(clickedCard);
+  const group = cards.filter((c) => deckGroupKeyForCard(c) === groupKey);
   if (!group.length) {
     closeZoom();
     zoomState = {
@@ -2153,6 +2237,14 @@ function createZoomPromoInfo() {
   zoomPromoInfo.className = "zoom-promo-info hidden";
   zoomPromoInfo.setAttribute("aria-live", "polite");
   document.body.appendChild(zoomPromoInfo);
+}
+
+function createZoomOwnedInfo() {
+  if (zoomOwnedInfo) return;
+  zoomOwnedInfo = document.createElement("div");
+  zoomOwnedInfo.className = "zoom-owned-info hidden";
+  zoomOwnedInfo.setAttribute("aria-live", "polite");
+  document.body.appendChild(zoomOwnedInfo);
 }
 
 function createRow(card) {
@@ -2632,6 +2724,11 @@ function bindEvents() {
       openDeckPasteModal();
     });
   }
+  if (deleteDeckBtn) {
+    deleteDeckBtn.addEventListener("click", () => {
+      promptDeleteSelectedDeck();
+    });
+  }
   if (deckModeBuildBtn) {
     deckModeBuildBtn.addEventListener("click", () => {
       if (!isDeckSelected()) return;
@@ -2706,6 +2803,7 @@ async function start() {
   loadCollection();
   createZoomNav();
   createZoomPromoInfo();
+  createZoomOwnedInfo();
   bindEvents();
   updateLegalState(false);
   if (!document.body.classList.contains("actions-sidebar-hidden")) {
