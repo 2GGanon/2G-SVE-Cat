@@ -1363,6 +1363,11 @@ function parseCardTypes(rawCardType) {
     .filter(Boolean);
 }
 
+function hasCardTypeTag(cardTypes, tag) {
+  const needle = String(tag || "").trim().toUpperCase();
+  return (cardTypes || []).some((value) => String(value || "").trim().toUpperCase() === needle);
+}
+
 function canonicalDeckCardName(name) {
   return String(name || "")
     .replace(/\s+\((Evolved|Advanced)\)\s*$/i, "")
@@ -2455,8 +2460,8 @@ async function loadCards() {
       rarity: rarityInfo.rarity,
       rarityOutlier: rarityInfo.outlier,
       rarityOutlierReason: rarityInfo.outlierReason,
-      isEvolved: isEvolvedType(cardTypeMap[rawCode], r["Card Name"]),
-      isAdvanced: parsedCardTypes.some((value) => String(value).toUpperCase() === "ADVANCED"),
+      isEvolved: hasCardTypeTag(parsedCardTypes, "Evolved") || isEvolvedType(cardTypeMap[rawCode], r["Card Name"]),
+      isAdvanced: hasCardTypeTag(parsedCardTypes, "Advanced"),
     };
   });
 
