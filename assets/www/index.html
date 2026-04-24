@@ -25,10 +25,11 @@
       </div>
     </header>
 
-    <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle search sidebar">&#128269;</button>
+    <section id="searchSidebarShell" class="sidebar-shell">
+      <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle search sidebar">&#128269;</button>
 
-    <section id="searchSidebar" class="controls sidebar-panel">
-      <div class="filters">
+      <section id="searchSidebar" class="controls sidebar-panel">
+        <div class="filters">
         <label class="control">
           <span>Search</span>
           <input id="searchInput" type="text" placeholder="Card name or code" />
@@ -110,7 +111,8 @@
             <span>Incomplete</span>
           </label>
         </div>
-      </div>
+        </div>
+      </section>
     </section>
 
     <section id="actionsSidebar" class="actions-shell">

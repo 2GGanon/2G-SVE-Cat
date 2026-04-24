@@ -197,6 +197,15 @@ const PR_PROMO_SOURCE_RULES = [
   [385, 385, "Worlds 2025-2026 Participation"],
   [386, 386, "BP14 Release Tournament Champion"],
   [387, 387, "BP15 Release Tournament Champion"],
+  [388, 389, "Showdown Demo Duo Tournament Participation"],
+  [390, 390, "Showdown Deck Trials Participation"],
+  [394, 394, "BP16 Release Tournament Participation"],
+  [395, 395, "BP16 Release Tournament Champion"],
+  [396, 403, "Promo Series 16"],
+  [404, 404, "Shop Tournament April 2026 Champion"],
+  [451, 460, "ECP02 Box Topper"],
+  [461, 461, "EX THE IDOLM@STER CINDERELLA GIRLS Release Tournament Champion"],
+  [462, 467, "EX THE IDOLM@STER CINDERELLA GIRLS Release Tournament Participation"],
 ];
 const STARTER_DECK_PLAYSET_LIMIT_BY_CODE = {
   "SD01-LD01EN": 1,
@@ -482,25 +491,32 @@ const SET_NAME_BY_CODE = {
   CP02: "THE IDOLM@STER CINDERELLA GIRLS",
   CP03: "Cardfight!! Vanguard",
   CSD01: "Ready, Set, Umamusume!",
+  CSD02: "THEIDOLM@STER CINDERELLA GIRLS Starter Decks",
   CSD02A: "Cute",
   CSD02B: "Cool",
   CSD02C: "Passion",
+  CSD03: "Cardfight!! Vanguard Starter Decks",
   CSD03A: "Sanctuary Knight Brigade",
   CSD03B: "Apocalyptic Fire",
   ECP01: "Umamusume: Pretty Derby",
+  ECP02: "THE IDOLM@STER CINDERELLA GIRLS",
+  GFB01: "Guide to Glory",
   GFB01A: "Guide to Glory (Forestcraft)",
   GFB01B: "Guide to Glory (Swordcraft)",
   GFB01C: "Guide to Glory (Runecraft)",
   GFB01D: "Guide to Glory (Dragoncraft)",
   GFD01: "Luxheart Legends",
   GFD02: "Treacherous Ambitions",
+  SD: "Starter Decks",
   SD01: "Regal Fairy Princess",
   SD02: "Blade of Resentment",
   SD03: "Mysteries of Conjuration",
   SD04: "Wrath of the Greatwyrm",
   SD05: "Waltz of the Undying Night",
   SD06: "Maculate Ablution",
+  SDD: "Showdown Decks",
   SP01: "Seaside Memories",
+  SS: "Worlds Beyond Starter Sets",
   SS01: "Worlds Beyond Swordcraft Starter Set",
   SS02: "Worlds Beyond Dragoncraft Starter Set",
   PR: "Promo Cards",
@@ -520,7 +536,7 @@ function normalizeSetCodeForLookup(setCode) {
 function setLabel(setCode) {
   const normalized = normalizeSetCodeForLookup(setCode);
   const name = SET_NAME_BY_CODE[normalized];
-  return name ? `${setCode}: ${name}` : setCode;
+  return name ? `${normalized}: ${name}` : setCode;
 }
 
 function normalizeCardCode(rawCode) {
@@ -537,6 +553,12 @@ function normalizeCardCode(rawCode) {
 
 function canonicalSetCode(rawSetCode) {
   const normalized = normalizeSetCodeForLookup(rawSetCode);
+  if (/^CSD02[ABC]$/.test(normalized)) return "CSD02";
+  if (/^CSD03[AB]$/.test(normalized)) return "CSD03";
+  if (/^GFB01[ABCD]$/.test(normalized)) return "GFB01";
+  if (/^SD0[1-6]$/.test(normalized)) return "SD";
+  if (/^SDD0[1-6]$/.test(normalized)) return "SDD";
+  if (/^SS0[12]$/.test(normalized)) return "SS";
   return PROMO_MERGED_SET_CODES.has(normalized) ? "PR" : String(rawSetCode || "");
 }
 
@@ -1217,7 +1239,11 @@ function setCodeFromCardCode(cardCode) {
   const normalized = normalizeCardCode(cardCode);
   const match = normalized.match(/^([A-Za-z0-9]+)-/);
   if (!match) return "UNKNOWN";
-  return canonicalSetCode(match[1]);
+  return match[1];
+}
+
+function filterSetCodeFromCardCode(cardCode) {
+  return canonicalSetCode(setCodeFromCardCode(cardCode));
 }
 
 function setCodeFolderCandidates(setCode) {
@@ -1810,7 +1836,7 @@ function setOwned(code, value) {
 }
 
 function populateSetFilter() {
-  const sets = [...new Set(cards.map((c) => c.setCode))].sort((a, b) => a.localeCompare(b));
+  const sets = [...new Set(cards.map((c) => c.filterSetCode))].sort((a, b) => a.localeCompare(b));
   sets.forEach((setCode) => {
     const opt = document.createElement("option");
     opt.value = setCode;
@@ -1965,7 +1991,7 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   const playsetLimit = playsetLimitForCard(card);
   const deckRequirement = deckRequirementForCard(card);
 
-  if (set && card.setCode !== set) return false;
+  if (set && card.filterSetCode !== set) return false;
   if (className && card.className !== className) return false;
   if (trait && !(card.traits || []).includes(trait)) return false;
   if (cardType && !(card.cardTypes || []).includes(cardType)) return false;
@@ -2549,6 +2575,7 @@ async function loadCards() {
       promoSource: r["Promo Obtain Source (if PR in code)"] || "",
       artUrl: r["Art URL"] || "",
       setCode: setCodeFromCardCode(rawCode),
+      filterSetCode: filterSetCodeFromCardCode(rawCode),
       rarity: rarityInfo.rarity,
       rarityOutlier: rarityInfo.outlier,
       rarityOutlierReason: rarityInfo.outlierReason,
@@ -2591,6 +2618,7 @@ async function loadCards() {
       promoSource: "",
       artUrl: "",
       setCode: setCodeFromCardCode(entry.code),
+      filterSetCode: filterSetCodeFromCardCode(entry.code),
       rarity: rarityInfo.rarity,
       rarityOutlier: rarityInfo.outlier,
       rarityOutlierReason: rarityInfo.outlierReason,
@@ -2615,6 +2643,7 @@ async function loadCards() {
       promoSource: "",
       artUrl: "",
       setCode: "BP08",
+      filterSetCode: "BP08",
       rarity: rarityInfo.rarity,
       rarityOutlier: rarityInfo.outlier,
       rarityOutlierReason: rarityInfo.outlierReason,
@@ -2806,6 +2835,9 @@ async function start() {
   createZoomOwnedInfo();
   bindEvents();
   updateLegalState(false);
+  if (!document.body.classList.contains("sidebar-hidden")) {
+    document.body.classList.add("sidebar-hidden");
+  }
   if (!document.body.classList.contains("actions-sidebar-hidden")) {
     document.body.classList.add("actions-sidebar-hidden");
   }

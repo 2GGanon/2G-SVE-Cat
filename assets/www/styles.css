@@ -183,22 +183,32 @@ body {
   gap: 0.7rem;
 }
 
-.sidebar-panel {
+.sidebar-shell {
   position: fixed;
-  left: var(--sidebar-gap);
   top: 7.6rem;
+  left: var(--sidebar-gap);
+  width: calc(var(--sidebar-width) + var(--sidebar-tab-width));
+  max-height: calc(100vh - 8.7rem);
+  z-index: 700;
+  overflow: visible;
+  transition: transform 0.25s ease;
+}
+
+.sidebar-panel {
+  position: absolute;
+  left: 0;
+  top: 0;
   width: var(--sidebar-width);
   max-height: calc(100vh - 8.7rem);
   overflow: auto;
   z-index: 700;
-  transition: transform 0.25s ease;
   border-top-right-radius: 0;
 }
 
 .sidebar-toggle {
-  position: fixed;
-  top: 7.6rem;
-  left: calc(var(--sidebar-gap) + var(--sidebar-width));
+  position: absolute;
+  top: 0;
+  left: var(--sidebar-width);
   width: var(--sidebar-tab-width);
   height: 2.8rem;
   border-radius: 0 12px 12px 0;
@@ -226,12 +236,8 @@ body {
   transition: left 0.25s ease, right 0.25s ease;
 }
 
-body.sidebar-hidden #searchSidebar {
-  transform: translateX(calc(-100% - var(--sidebar-gap)));
-}
-
-body.sidebar-hidden .sidebar-toggle {
-  left: 0;
+body.sidebar-hidden #searchSidebarShell {
+  transform: translateX(calc(-1 * (var(--sidebar-width) + var(--sidebar-tab-width) + var(--sidebar-gap))));
 }
 
 body.sidebar-hidden .layout {
@@ -900,16 +906,22 @@ body.zoom-active .zoom-nav {
   }
 
   .sidebar-panel {
-    left: var(--sidebar-gap);
-    top: 7rem;
+    left: 0;
+    top: 0;
     width: var(--sidebar-width);
     max-height: calc(100vh - 7.9rem);
     border-top-right-radius: 0;
   }
 
-  .sidebar-toggle {
+  .sidebar-shell {
     top: 7rem;
-    left: calc(var(--sidebar-gap) + var(--sidebar-width));
+    left: var(--sidebar-gap);
+    max-height: calc(100vh - 7.9rem);
+  }
+
+  .sidebar-toggle {
+    top: 0;
+    left: var(--sidebar-width);
   }
 
   .actions-panel {
@@ -932,8 +944,8 @@ body.zoom-active .zoom-nav {
     right: auto;
   }
 
-  body.sidebar-hidden .sidebar-toggle {
-    left: 0;
+  body.sidebar-hidden #searchSidebarShell {
+    transform: translateX(calc(-1 * (var(--sidebar-width) + var(--sidebar-tab-width) + var(--sidebar-gap))));
   }
 
   .scan-fab {
