@@ -477,8 +477,35 @@ class _CatalogueWebViewPageState extends State<CatalogueWebViewPage> {
     }
   }
 
+  String _extractEmbeddedCsvText(String jsText) {
+    const marker = 'window.SVE_CSV_DATA = `';
+    final start = jsText.indexOf(marker);
+    if (start < 0) {
+      throw StateError('Embedded catalogue data marker not found.');
+    }
+    final contentStart = start + marker.length;
+    final end = jsText.indexOf('`;', contentStart);
+    if (end < 0) {
+      throw StateError('Embedded catalogue data terminator not found.');
+    }
+
+    final escaped = jsText.substring(contentStart, end);
+    final buffer = StringBuffer();
+    for (var i = 0; i < escaped.length; i++) {
+      final ch = escaped[i];
+      if (ch == r'\' && i + 1 < escaped.length) {
+        buffer.write(escaped[i + 1]);
+        i++;
+      } else {
+        buffer.write(ch);
+      }
+    }
+    return buffer.toString();
+  }
+
   Future<List<ScannerCardRecord>> _loadScannerCatalogue() async {
-    final csvText = await rootBundle.loadString('assets/www/data/shadowverse-evolve-card-catalog.csv');
+    final embeddedJs = await rootBundle.loadString('assets/www/data/cards-data.js');
+    final csvText = _extractEmbeddedCsvText(embeddedJs);
     final rows = parseCsv(csvText);
     return rows.map(ScannerCardRecord.fromCsvRow).toList();
   }

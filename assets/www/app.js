@@ -32,6 +32,41 @@ const CLASS_FILTER_ORDER = [
   "Havencraft",
   "Neutral",
 ];
+const BACKGROUND_CARD_LOAD_BATCH_SIZE = 180;
+const SET_FILTER_ORDER = [
+  "BP01",
+  "BP02",
+  "BP03",
+  "BP04",
+  "BP05",
+  "BP06",
+  "BP07",
+  "BP08",
+  "BP09",
+  "BP10",
+  "BP11",
+  "BP12",
+  "BP13",
+  "BP14",
+  "BP15",
+  "BP16",
+  "SP01",
+  "PR",
+  "CSD01",
+  "CP01",
+  "ECP01",
+  "CSD02",
+  "CP02",
+  "ECP02",
+  "CSD03",
+  "CP03",
+  "GFB01",
+  "GFD01",
+  "GFD02",
+  "SD",
+  "SS",
+  "SDD",
+];
 const MISSING_FRONT_CARD_OVERRIDES = [
   { code: "BP08-SL03EN", name: "Orchis, Resolute Puppet", isEvolved: true },
   { code: "BP09-SL20EN", name: "Vania, Kind Queen", isEvolved: false },
@@ -203,6 +238,16 @@ const PR_PROMO_SOURCE_RULES = [
   [395, 395, "BP16 Release Tournament Champion"],
   [396, 403, "Promo Series 16"],
   [404, 404, "Shop Tournament April 2026 Champion"],
+  [405, 421, "Bushiroad Summer Fest 2026 Trios Participation"],
+  [422, 423, "Bushiroad Summer Fest 2026 Trios Top 8"],
+  [424, 424, "Bushiroad Summer Fest 2026 Trios Champion"],
+  [425, 439, "Bushiroad Summer Fest 2026 Crosscraft and Free Fight Participation"],
+  [440, 440, "Bushiraod Summer Fest 2026 Gloryfinder Participation"],
+  [441, 441, "Bushiroad Summer Fest 2026 Crosscraft Top 8"],
+  [442, 442, "Bushiroad Summer Fest 2026 Crosscraft Champion"],
+  [443, 443, "Showdown Challenges Spring 2026 Participation"],
+  [444, 444, "Showdown Challenges Spring 2026 Top 8"],
+  [445, 445, "Showdown Challenges Spring 2026 Champion"],
   [451, 460, "ECP02 Box Topper"],
   [461, 461, "EX THE IDOLM@STER CINDERELLA GIRLS Release Tournament Champion"],
   [462, 467, "EX THE IDOLM@STER CINDERELLA GIRLS Release Tournament Participation"],
@@ -649,7 +694,6 @@ const artistFilter = document.getElementById("artistFilter");
 const rarityFilterGroup = document.getElementById("rarityFilterGroup");
 const ownedOnly = document.getElementById("ownedOnly");
 const incompleteOnly = document.getElementById("incompleteOnly");
-const extraOnly = document.getElementById("extraOnly");
 const scanBtn = document.getElementById("scanBtn");
 const exportBtn = document.getElementById("exportBtn");
 const importBtn = document.getElementById("importBtn");
@@ -722,12 +766,28 @@ let zoomNavLeft = null;
 let zoomNavRight = null;
 let zoomPromoInfo = null;
 let zoomOwnedInfo = null;
+let zoomCardTextInfo = null;
 let rarityOutliers = [];
 let dualGroupByCode = new Map();
 let appliedSearchText = "";
 let scanInFlight = false;
 let scanCodeAliasMap = new Map();
 let scanNameAliasMap = new Map();
+let scanIndexesInitialized = false;
+let pendingCardRows = [];
+let stagedCardTypeMap = {};
+let backgroundCardLoadHandle = null;
+let fullFilterOptionState = {
+  setCodes: [],
+  classNames: [],
+  traits: [],
+  cardTypes: [],
+  cardCosts: [],
+  attacks: [],
+  defenses: [],
+  artists: [],
+  rarityGroups: [],
+};
 let cardsByDeckGroupKey = new Map();
 let availableDeckFiles = [];
 let deckDisplayMode = "view";
@@ -770,6 +830,18 @@ function updateZoomOwnedInfo(card) {
   }
   zoomOwnedInfo.textContent = `Owned: ${ownedFor(card.code)}`;
   zoomOwnedInfo.classList.remove("hidden");
+}
+
+function updateZoomCardTextInfo(card) {
+  if (!zoomCardTextInfo) return;
+  const cardText = String(card?.cardText || "").trim();
+  if (!cardText) {
+    zoomCardTextInfo.classList.add("hidden");
+    zoomCardTextInfo.innerHTML = "";
+    return;
+  }
+  zoomCardTextInfo.innerHTML = cardText;
+  zoomCardTextInfo.classList.remove("hidden");
 }
 
 function hasNativeBridge() {
@@ -820,11 +892,13 @@ function nameScanAlias(name) {
   return normalizeScanText(name);
 }
 
-function buildScanIndexes() {
+function resetScanIndexes() {
   scanCodeAliasMap = new Map();
   scanNameAliasMap = new Map();
+}
 
-  cards.forEach((card) => {
+function indexCardsForScan(cardList) {
+  (cardList || []).forEach((card) => {
     codeScanAliases(card.code).forEach((alias) => {
       const existing = scanCodeAliasMap.get(alias) || [];
       existing.push(card);
@@ -838,6 +912,17 @@ function buildScanIndexes() {
       scanNameAliasMap.set(nameAlias, existing);
     }
   });
+}
+
+function buildScanIndexes() {
+  resetScanIndexes();
+  indexCardsForScan(cards);
+  scanIndexesInitialized = true;
+}
+
+function ensureScanIndexesBuilt() {
+  if (scanIndexesInitialized) return;
+  buildScanIndexes();
 }
 
 function looksLikeCardCodeCandidate(value) {
@@ -930,6 +1015,7 @@ function editDistanceWithinLimit(a, b, limit = 1) {
 }
 
 function findCardByCodeCandidates(recognizedText) {
+  ensureScanIndexesBuilt();
   const candidates = extractScanCodeCandidates(recognizedText);
   const directHits = new Map();
 
@@ -980,6 +1066,7 @@ function findCardByCodeCandidates(recognizedText) {
 }
 
 function findCardByNameCandidates(recognizedText) {
+  ensureScanIndexesBuilt();
   const compact = normalizeScanText(recognizedText);
   if (!compact) return null;
 
@@ -1038,6 +1125,8 @@ function adjustCardQuantityByCode(code, delta) {
 
 function startNativeScan() {
   if (scanInFlight) return;
+  ensureAllCardsLoaded();
+  ensureScanIndexesBuilt();
   if (!nativePost({ type: "scan_card" })) {
     alert("Card scanning is only available in the Android app build.");
     return;
@@ -1350,6 +1439,14 @@ function applyArtToImage(imgEl, card) {
     imgEl.onerror = null;
     imgEl.src = "./assets/card-placeholder.svg";
   };
+}
+
+function prefetchArtForCard(card) {
+  artUrlCandidates(card).forEach((url) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
+  });
 }
 
 function isEvolvedType(cardType, name) {
@@ -1836,18 +1933,27 @@ function setOwned(code, value) {
 }
 
 function populateSetFilter() {
-  const sets = [...new Set(cards.map((c) => c.filterSetCode))].sort((a, b) => a.localeCompare(b));
+  const currentValue = setFilter.value;
+  setFilter.innerHTML = '<option value="">All</option>';
+  const discovered = fullFilterOptionState.setCodes;
+  const sets = [
+    ...SET_FILTER_ORDER.filter((setCode) => discovered.includes(setCode)),
+    ...discovered.filter((setCode) => !SET_FILTER_ORDER.includes(setCode)).sort((a, b) => a.localeCompare(b)),
+  ];
   sets.forEach((setCode) => {
     const opt = document.createElement("option");
     opt.value = setCode;
     opt.textContent = setLabel(setCode);
     setFilter.appendChild(opt);
   });
+  if (currentValue && [...setFilter.options].some((option) => option.value === currentValue)) {
+    setFilter.value = currentValue;
+  }
 }
 
 function populateClassFilter() {
   if (!classFilter) return;
-  const discovered = new Set(cards.map((c) => c.className).filter(Boolean));
+  const discovered = new Set(fullFilterOptionState.classNames);
   const classNames = [
     ...CLASS_FILTER_ORDER.filter((className) => discovered.has(className)),
     ...[...discovered].filter((className) => !CLASS_FILTER_ORDER.includes(className)).sort((a, b) => a.localeCompare(b)),
@@ -1863,9 +1969,7 @@ function populateClassFilter() {
 
 function populateTraitFilter() {
   if (!traitFilter) return;
-  const traits = [...new Set(cards.flatMap((c) => c.traits || []).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b)
-  );
+  const traits = fullFilterOptionState.traits;
   traitFilter.innerHTML = '<option value="">All</option>';
   traits.forEach((trait) => {
     const opt = document.createElement("option");
@@ -1877,9 +1981,7 @@ function populateTraitFilter() {
 
 function populateCardTypeFilter() {
   if (!cardTypeFilter) return;
-  const cardTypes = [...new Set(cards.flatMap((c) => c.cardTypes || []).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b)
-  );
+  const cardTypes = fullFilterOptionState.cardTypes;
   cardTypeFilter.innerHTML = '<option value="">All</option>';
   cardTypes.forEach((cardType) => {
     const opt = document.createElement("option");
@@ -1914,28 +2016,18 @@ function populateStatFilter(selectEl, values, emptyLabel) {
 }
 
 function populateStatFilters() {
-  populateStatFilter(
-    cardCostFilter,
-    [...new Set(cards.map((c) => c.cardCost).filter((value) => value && value !== "-"))],
-    "All"
-  );
-  populateStatFilter(
-    attackFilter,
-    [...new Set(cards.map((c) => c.attack).filter((value) => value && value !== "-"))],
-    "All"
-  );
-  populateStatFilter(
-    defenseFilter,
-    [...new Set(cards.map((c) => c.defense).filter((value) => value && value !== "-"))],
-    "All"
-  );
+  populateStatFilter(cardCostFilter, fullFilterOptionState.cardCosts, "All");
+  populateStatFilter(attackFilter, fullFilterOptionState.attacks, "All");
+  populateStatFilter(defenseFilter, fullFilterOptionState.defenses, "All");
 }
 
 function populateArtistFilter() {
   if (!artistFilter) return;
-  const artists = [...new Set(cards.map((c) => c.artist).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b)
-  );
+  const discovered = fullFilterOptionState.artists;
+  const artists = [
+    ...discovered.filter((artist) => artist === "TBD"),
+    ...discovered.filter((artist) => artist !== "TBD").sort((a, b) => a.localeCompare(b)),
+  ];
   artistFilter.innerHTML = '<option value="">All artists</option>';
   artists.forEach((artist) => {
     const opt = document.createElement("option");
@@ -1946,9 +2038,7 @@ function populateArtistFilter() {
 }
 
 function populateRarityFilter() {
-  const rarityGroups = RARITY_FILTER_GROUP_ORDER.filter((group) =>
-    cards.some((card) => rarityFilterBucket(card.rarity) === group)
-  );
+  const rarityGroups = fullFilterOptionState.rarityGroups;
 
   rarityFilterGroup.innerHTML = "";
   rarityGroups.forEach((rarityGroup) => {
@@ -1958,7 +2048,10 @@ function populateRarityFilter() {
     input.type = "checkbox";
     input.value = rarityGroup;
     input.checked = true;
-    input.addEventListener("change", renderTable);
+    input.addEventListener("change", () => {
+      prioritizePendingCardsForCurrentFilters();
+      renderTable();
+    });
     const text = document.createElement("span");
     text.textContent = rarityGroup;
     label.appendChild(input);
@@ -1987,7 +2080,6 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   const selected = selectedRarities();
   const requireOwned = ownedOnly.checked;
   const requireIncomplete = incompleteOnly.checked;
-  const requireExtra = extraOnly ? extraOnly.checked : false;
   const playsetLimit = playsetLimitForCard(card);
   const deckRequirement = deckRequirementForCard(card);
 
@@ -2002,7 +2094,6 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   if (selected.size > 0 && !selected.has(rarityFilterBucket(card.rarity))) return false;
   if (requireOwned && qty === 0) return false;
   if (requireIncomplete && qty >= playsetLimit) return false;
-  if (requireExtra && qty <= playsetLimit) return false;
   if (isDeckViewMode() && deckRequirement === 0) return false;
   if (!text) return true;
   return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
@@ -2135,6 +2226,10 @@ function closeZoom() {
     zoomOwnedInfo.classList.add("hidden");
     zoomOwnedInfo.textContent = "";
   }
+  if (zoomCardTextInfo) {
+    zoomCardTextInfo.classList.add("hidden");
+    zoomCardTextInfo.innerHTML = "";
+  }
   if (zoomState.anchorEl && zoomState.anchorCode) {
     const anchorCard = cards.find((c) => c.code === zoomState.anchorCode);
     if (anchorCard) applyArtToImage(zoomState.anchorEl, anchorCard);
@@ -2154,6 +2249,7 @@ function setZoomedElement(nextIndex) {
   document.body.classList.add("zoom-active");
   updateZoomPromoInfo(zoomCard);
   updateZoomOwnedInfo(zoomCard);
+  updateZoomCardTextInfo(zoomCard);
   updateZoomNavState();
 }
 
@@ -2273,6 +2369,14 @@ function createZoomOwnedInfo() {
   document.body.appendChild(zoomOwnedInfo);
 }
 
+function createZoomCardTextInfo() {
+  if (zoomCardTextInfo) return;
+  zoomCardTextInfo = document.createElement("div");
+  zoomCardTextInfo.className = "zoom-card-text-info hidden";
+  zoomCardTextInfo.setAttribute("aria-live", "polite");
+  document.body.appendChild(zoomCardTextInfo);
+}
+
 function createRow(card) {
   const fragment = rowTemplate.content.cloneNode(true);
   const tr = fragment.querySelector("tr");
@@ -2365,6 +2469,334 @@ function renderTable() {
   const fragment = document.createDocumentFragment();
   rows.forEach((card) => fragment.appendChild(createRow(card)));
   tableBody.appendChild(fragment);
+}
+
+function syncCardCaches(newCardsForScan = []) {
+  initDualGroups();
+  cardByCode = new Map(cards.map((card) => [card.code, card]));
+  buildDeckIndexes();
+  rarityOutliers = cards.filter((c) => c.rarityOutlier).map((c) => ({
+    code: c.code,
+    name: c.name,
+    reason: c.rarityOutlierReason,
+  }));
+  if (scanIndexesInitialized) {
+    indexCardsForScan(newCardsForScan.length ? newCardsForScan : cards);
+  }
+}
+
+function cardFromCsvRow(row, cardTypeMap) {
+  const rawCode = row["Card Code"];
+  const rarityInfo = parseRarityFromCardCode(rawCode);
+  const parsedCardTypes = parseCardTypes(row["Card Type"]);
+  return {
+    name: row["Card Name"],
+    code: rawCode,
+    className: row["Class"] || "",
+    traits: parseTraits(row["Traits"]),
+    cardTypes: parsedCardTypes,
+    cardCost: row["Card Cost"] || "",
+    attack: row["Attack"] || "",
+    defense: row["Defense"] || "",
+    cardText: row["Card Text"] || "",
+    artist: row["Artist"] || "Uncredited",
+    promoSource: row["Promo Obtain Source (if PR in code)"] || "",
+    artUrl: row["Art URL"] || "",
+    setCode: setCodeFromCardCode(rawCode),
+    filterSetCode: filterSetCodeFromCardCode(rawCode),
+    rarity: rarityInfo.rarity,
+    rarityOutlier: rarityInfo.outlier,
+    rarityOutlierReason: rarityInfo.outlierReason,
+    isEvolved:
+      hasCardTypeTag(parsedCardTypes, "Evolved") || isEvolvedType(cardTypeMap[rawCode], row["Card Name"]),
+    isAdvanced: hasCardTypeTag(parsedCardTypes, "Advanced"),
+  };
+}
+
+function insertMissingCardByCodeOrder(card) {
+  const compare = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+  const sameSetIndices = cards
+    .map((c, idx) => ({ c, idx }))
+    .filter((x) => x.c.setCode === card.setCode);
+  if (!sameSetIndices.length) {
+    cards.push(card);
+    return;
+  }
+  const ahead = sameSetIndices.find((x) => compare(x.c.code, card.code) > 0);
+  if (ahead) {
+    cards.splice(ahead.idx, 0, card);
+    return;
+  }
+  const last = sameSetIndices[sameSetIndices.length - 1];
+  cards.splice(last.idx + 1, 0, card);
+}
+
+function ensureMissingFrontCardOverrides() {
+  MISSING_FRONT_CARD_OVERRIDES.forEach((entry) => {
+    if (cards.some((c) => c.code === entry.code)) return;
+    const rarityInfo = parseRarityFromCardCode(entry.code);
+    insertMissingCardByCodeOrder({
+      name: entry.name,
+      code: entry.code,
+      className: "",
+      traits: [],
+      cardTypes: [],
+      cardCost: "",
+      attack: "",
+      defense: "",
+      artist: "Uncredited",
+      promoSource: "",
+      artUrl: "",
+      setCode: setCodeFromCardCode(entry.code),
+      filterSetCode: filterSetCodeFromCardCode(entry.code),
+      rarity: rarityInfo.rarity,
+      rarityOutlier: rarityInfo.outlier,
+      rarityOutlierReason: rarityInfo.outlierReason,
+      isEvolved: entry.isEvolved,
+      isAdvanced: false,
+    });
+  });
+}
+
+function ensureKnownDualEntries() {
+  if (cards.some((c) => c.code === "BP08-003EN")) return;
+  const rarityInfo = parseRarityFromCardCode("BP08-003EN");
+  const bp08003 = {
+    name: "Orchis, Resolute Puppet",
+    code: "BP08-003EN",
+    className: "",
+    traits: [],
+    cardTypes: [],
+    cardCost: "",
+    attack: "",
+    defense: "",
+    artist: "Uncredited",
+    promoSource: "",
+    artUrl: "",
+    setCode: "BP08",
+    filterSetCode: "BP08",
+    rarity: rarityInfo.rarity,
+    rarityOutlier: rarityInfo.outlier,
+    rarityOutlierReason: rarityInfo.outlierReason,
+    isEvolved: true,
+    isAdvanced: false,
+  };
+  const bp08002Index = cards.findIndex((c) => c.code === "BP08-002EN");
+  if (bp08002Index >= 0) {
+    cards.splice(bp08002Index + 1, 0, bp08003);
+  } else {
+    cards.push(bp08003);
+  }
+}
+
+function requestBackgroundTask(callback) {
+  if (typeof window.requestIdleCallback === "function") {
+    return window.requestIdleCallback(callback, { timeout: 120 });
+  }
+  return window.setTimeout(() => callback({ timeRemaining: () => 8, didTimeout: false }), 32);
+}
+
+function cancelBackgroundTask(handle) {
+  if (handle == null) return;
+  if (typeof window.cancelIdleCallback === "function") {
+    window.cancelIdleCallback(handle);
+    return;
+  }
+  window.clearTimeout(handle);
+}
+
+function buildFullFilterOptionState(parsedRows) {
+  const setCodes = new Set();
+  const classNames = new Set();
+  const traits = new Set();
+  const cardTypes = new Set();
+  const cardCosts = new Set();
+  const attacks = new Set();
+  const defenses = new Set();
+  const artists = new Set();
+  const rarityGroups = new Set();
+
+  (parsedRows || []).forEach((row) => {
+    const rawCode = row["Card Code"];
+    setCodes.add(filterSetCodeFromCardCode(rawCode));
+    const className = String(row["Class"] || "").trim();
+    if (className) classNames.add(className);
+    parseTraits(row["Traits"]).forEach((trait) => traits.add(trait));
+    parseCardTypes(row["Card Type"]).forEach((cardType) => cardTypes.add(cardType));
+    const cardCost = String(row["Card Cost"] || "").trim();
+    const attack = String(row["Attack"] || "").trim();
+    const defense = String(row["Defense"] || "").trim();
+    const artist = String(row["Artist"] || "Uncredited").trim() || "Uncredited";
+    if (cardCost && cardCost !== "-") cardCosts.add(cardCost);
+    if (attack && attack !== "-") attacks.add(attack);
+    if (defense && defense !== "-") defenses.add(defense);
+    if (artist) artists.add(artist);
+    rarityGroups.add(rarityFilterBucket(parseRarityFromCardCode(rawCode).rarity));
+  });
+
+  fullFilterOptionState = {
+    setCodes: [...setCodes],
+    classNames: [...classNames],
+    traits: [...traits].sort((a, b) => a.localeCompare(b)),
+    cardTypes: [...cardTypes].sort((a, b) => a.localeCompare(b)),
+    cardCosts: [...cardCosts],
+    attacks: [...attacks],
+    defenses: [...defenses],
+    artists: [...artists],
+    rarityGroups: RARITY_FILTER_GROUP_ORDER.filter((group) => rarityGroups.has(group)),
+  };
+}
+
+function rowMatchesCurrentPriority(row) {
+  const set = setFilter.value;
+  const className = classFilter ? classFilter.value : "";
+  const trait = traitFilter ? traitFilter.value : "";
+  const cardType = cardTypeFilter ? cardTypeFilter.value : "";
+  const cardCost = cardCostFilter ? cardCostFilter.value : "";
+  const attack = attackFilter ? attackFilter.value : "";
+  const defense = defenseFilter ? defenseFilter.value : "";
+  const artist = artistFilter ? artistFilter.value : "";
+  const text = appliedSearchText;
+  const selected = selectedRarities();
+
+  const filterSetCode = filterSetCodeFromCardCode(row["Card Code"]);
+  if (set && filterSetCode !== set) return false;
+  if (className && String(row["Class"] || "") !== className) return false;
+  if (trait && !parseTraits(row["Traits"]).includes(trait)) return false;
+  if (cardType && !parseCardTypes(row["Card Type"]).includes(cardType)) return false;
+  if (cardCost && String(row["Card Cost"] || "") !== cardCost) return false;
+  if (attack && String(row["Attack"] || "") !== attack) return false;
+  if (defense && String(row["Defense"] || "") !== defense) return false;
+  if (artist && (String(row["Artist"] || "Uncredited").trim() || "Uncredited") !== artist) return false;
+  if (selected.size > 0 && !selected.has(rarityFilterBucket(parseRarityFromCardCode(row["Card Code"]).rarity))) return false;
+  if (!text) return true;
+  const lowerText = text.toLowerCase();
+  return String(row["Card Name"] || "").toLowerCase().includes(lowerText) || String(row["Card Code"] || "").toLowerCase().includes(lowerText);
+}
+
+function comparePendingRowsForVisibleOrder(a, b) {
+  if (isDeckViewMode()) {
+    const aCardTypes = parseCardTypes(a["Card Type"]);
+    const bCardTypes = parseCardTypes(b["Card Type"]);
+    const aIsEvolved = hasCardTypeTag(aCardTypes, "Evolved");
+    const bIsEvolved = hasCardTypeTag(bCardTypes, "Evolved");
+    const aIsAdvanced = hasCardTypeTag(aCardTypes, "Advanced");
+    const bIsAdvanced = hasCardTypeTag(bCardTypes, "Advanced");
+    const aModeBucket = !aIsEvolved && !aIsAdvanced ? 0 : 1;
+    const bModeBucket = !bIsEvolved && !bIsAdvanced ? 0 : 1;
+    const aModeRank = aIsEvolved ? 0 : aIsAdvanced ? 1 : 2;
+    const bModeRank = bIsEvolved ? 0 : bIsAdvanced ? 1 : 2;
+    const aCost = String(a["Card Cost"] || "");
+    const bCost = String(b["Card Cost"] || "");
+    const aSet = setCodeFromCardCode(a["Card Code"]);
+    const bSet = setCodeFromCardCode(b["Card Code"]);
+    const aName = canonicalDeckCardName(a["Card Name"] || "");
+    const bName = canonicalDeckCardName(b["Card Name"] || "");
+    return (
+      aModeBucket - bModeBucket ||
+      compareDeckSortValue(aCost, bCost) ||
+      aSet.localeCompare(bSet, undefined, { numeric: true, sensitivity: "base" }) ||
+      String(a["Card Code"] || "").localeCompare(String(b["Card Code"] || ""), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }) ||
+      aModeRank - bModeRank ||
+      aName.localeCompare(bName, undefined, { sensitivity: "base" }) ||
+      (a.__catalogIndex || 0) - (b.__catalogIndex || 0)
+    );
+  }
+
+  if (setFilter.value === "PR") {
+    const promoDiff = promoOrderIndex(a["Card Code"]) - promoOrderIndex(b["Card Code"]);
+    if (promoDiff !== 0) return promoDiff;
+    const codeDiff = String(a["Card Code"] || "").localeCompare(String(b["Card Code"] || ""), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    if (codeDiff !== 0) return codeDiff;
+  }
+
+  return (a.__catalogIndex || 0) - (b.__catalogIndex || 0);
+}
+
+function loadPriorityPendingBatchNow(limit = BACKGROUND_CARD_LOAD_BATCH_SIZE) {
+  if (!pendingCardRows.length) return;
+  const newCards = [];
+  while (pendingCardRows.length && newCards.length < limit) {
+    if (!rowMatchesCurrentPriority(pendingCardRows[0])) break;
+    newCards.push(cardFromCsvRow(pendingCardRows.shift(), stagedCardTypeMap));
+  }
+  if (!newCards.length) return;
+  cards.push(...newCards);
+  syncCardCaches(newCards);
+  renderTable();
+}
+
+function prioritizePendingCardsForCurrentFilters() {
+  if (!pendingCardRows.length) return;
+  const prioritized = [];
+  const deferred = [];
+  pendingCardRows.forEach((row) => {
+    (rowMatchesCurrentPriority(row) ? prioritized : deferred).push(row);
+  });
+
+  prioritized.sort(comparePendingRowsForVisibleOrder);
+
+  pendingCardRows = [...prioritized, ...deferred];
+  cancelBackgroundTask(backgroundCardLoadHandle);
+  backgroundCardLoadHandle = null;
+  loadPriorityPendingBatchNow();
+  scheduleBackgroundCardLoad();
+}
+
+function finalizeBackgroundCardLoad() {
+  backgroundCardLoadHandle = null;
+  renderTable();
+  if (rarityOutliers.length) {
+    console.warn("Rarity outliers detected and left uncategorized:", rarityOutliers);
+  }
+}
+
+function ensureAllCardsLoaded() {
+  if (!pendingCardRows.length) return;
+  cancelBackgroundTask(backgroundCardLoadHandle);
+  backgroundCardLoadHandle = null;
+  const newCards = pendingCardRows.map((row) => cardFromCsvRow(row, stagedCardTypeMap));
+  pendingCardRows = [];
+  cards.push(...newCards);
+  ensureMissingFrontCardOverrides();
+  ensureKnownDualEntries();
+  syncCardCaches(newCards);
+  finalizeBackgroundCardLoad();
+}
+
+function scheduleBackgroundCardLoad() {
+  if (!pendingCardRows.length || backgroundCardLoadHandle != null) return;
+  backgroundCardLoadHandle = requestBackgroundTask((deadline) => {
+    backgroundCardLoadHandle = null;
+    const newCards = [];
+    const start = performance.now();
+    while (pendingCardRows.length) {
+      if (
+        newCards.length >= BACKGROUND_CARD_LOAD_BATCH_SIZE ||
+        (newCards.length > 0 &&
+          (((deadline && deadline.timeRemaining && deadline.timeRemaining() <= 3) || performance.now() - start >= 14)))
+      ) {
+        break;
+      }
+      newCards.push(cardFromCsvRow(pendingCardRows.shift(), stagedCardTypeMap));
+    }
+    if (newCards.length) {
+      cards.push(...newCards);
+      syncCardCaches(newCards);
+      renderTable();
+    }
+    if (pendingCardRows.length) {
+      scheduleBackgroundCardLoad();
+      return;
+    }
+    finalizeBackgroundCardLoad();
+  });
 }
 
 async function exportCollection() {
@@ -2557,117 +2989,14 @@ async function loadCards() {
     csvText = await response.text();
   }
 
-  const parsed = parseCsv(csvText);
-  cards = parsed.map((r) => {
-    const rawCode = r["Card Code"];
-    const rarityInfo = parseRarityFromCardCode(rawCode);
-    const parsedCardTypes = parseCardTypes(r["Card Type"]);
-    return {
-      name: r["Card Name"],
-      code: rawCode,
-      className: r["Class"] || "",
-      traits: parseTraits(r["Traits"]),
-      cardTypes: parsedCardTypes,
-      cardCost: r["Card Cost"] || "",
-      attack: r["Attack"] || "",
-      defense: r["Defense"] || "",
-      artist: r["Artist"] || "Uncredited",
-      promoSource: r["Promo Obtain Source (if PR in code)"] || "",
-      artUrl: r["Art URL"] || "",
-      setCode: setCodeFromCardCode(rawCode),
-      filterSetCode: filterSetCodeFromCardCode(rawCode),
-      rarity: rarityInfo.rarity,
-      rarityOutlier: rarityInfo.outlier,
-      rarityOutlierReason: rarityInfo.outlierReason,
-      isEvolved: hasCardTypeTag(parsedCardTypes, "Evolved") || isEvolvedType(cardTypeMap[rawCode], r["Card Name"]),
-      isAdvanced: hasCardTypeTag(parsedCardTypes, "Advanced"),
-    };
-  });
-
-  function insertMissingCardByCodeOrder(card) {
-    const compare = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
-    const sameSetIndices = cards
-      .map((c, idx) => ({ c, idx }))
-      .filter((x) => x.c.setCode === card.setCode);
-    if (!sameSetIndices.length) {
-      cards.push(card);
-      return;
-    }
-    const ahead = sameSetIndices.find((x) => compare(x.c.code, card.code) > 0);
-    if (ahead) {
-      cards.splice(ahead.idx, 0, card);
-      return;
-    }
-    const last = sameSetIndices[sameSetIndices.length - 1];
-    cards.splice(last.idx + 1, 0, card);
-  }
-
-  MISSING_FRONT_CARD_OVERRIDES.forEach((entry) => {
-    if (cards.some((c) => c.code === entry.code)) return;
-    const rarityInfo = parseRarityFromCardCode(entry.code);
-    insertMissingCardByCodeOrder({
-      name: entry.name,
-      code: entry.code,
-      className: "",
-      traits: [],
-      cardTypes: [],
-      cardCost: "",
-      attack: "",
-      defense: "",
-      artist: "Uncredited",
-      promoSource: "",
-      artUrl: "",
-      setCode: setCodeFromCardCode(entry.code),
-      filterSetCode: filterSetCodeFromCardCode(entry.code),
-      rarity: rarityInfo.rarity,
-      rarityOutlier: rarityInfo.outlier,
-      rarityOutlierReason: rarityInfo.outlierReason,
-      isEvolved: entry.isEvolved,
-      isAdvanced: false,
-    });
-  });
-
-  // Ensure known dual-sided entries are present even when not emitted by upstream export.
-  if (!cards.some((c) => c.code === "BP08-003EN")) {
-    const rarityInfo = parseRarityFromCardCode("BP08-003EN");
-    const bp08003 = {
-      name: "Orchis, Resolute Puppet",
-      code: "BP08-003EN",
-      className: "",
-      traits: [],
-      cardTypes: [],
-      cardCost: "",
-      attack: "",
-      defense: "",
-      artist: "Uncredited",
-      promoSource: "",
-      artUrl: "",
-      setCode: "BP08",
-      filterSetCode: "BP08",
-      rarity: rarityInfo.rarity,
-      rarityOutlier: rarityInfo.outlier,
-      rarityOutlierReason: rarityInfo.outlierReason,
-      isEvolved: true,
-      isAdvanced: false,
-    };
-    const bp08002Index = cards.findIndex((c) => c.code === "BP08-002EN");
-    if (bp08002Index >= 0) {
-      cards.splice(bp08002Index + 1, 0, bp08003);
-    } else {
-      cards.push(bp08003);
-    }
-  }
-
-  initDualGroups();
-  cardByCode = new Map(cards.map((card) => [card.code, card]));
-  buildDeckIndexes();
-  buildScanIndexes();
-
-  rarityOutliers = cards.filter((c) => c.rarityOutlier).map((c) => ({
-    code: c.code,
-    name: c.name,
-    reason: c.rarityOutlierReason,
-  }));
+  stagedCardTypeMap = cardTypeMap;
+  const parsed = parseCsv(csvText).map((row, index) => ({ ...row, __catalogIndex: index }));
+  buildFullFilterOptionState(parsed);
+  cards = parsed.map((row) => cardFromCsvRow(row, stagedCardTypeMap));
+  pendingCardRows = [];
+  ensureMissingFrontCardOverrides();
+  ensureKnownDualEntries();
+  syncCardCaches();
 }
 
 function registerServiceWorker() {
@@ -2686,27 +3015,31 @@ function triggerHapticFeedback() {
 }
 
 function bindEvents() {
+  const onFilterChanged = () => {
+    prioritizePendingCardsForCurrentFilters();
+    renderTable();
+  };
+
   searchBtn.addEventListener("click", () => {
     appliedSearchText = searchInput.value.trim().toLowerCase();
-    renderTable();
+    onFilterChanged();
   });
   searchInput.addEventListener("keydown", (ev) => {
     if (ev.key !== "Enter") return;
     ev.preventDefault();
     appliedSearchText = searchInput.value.trim().toLowerCase();
-    renderTable();
+    onFilterChanged();
   });
-  setFilter.addEventListener("change", renderTable);
-  if (classFilter) classFilter.addEventListener("change", renderTable);
-  if (traitFilter) traitFilter.addEventListener("change", renderTable);
-  if (cardTypeFilter) cardTypeFilter.addEventListener("change", renderTable);
-  if (cardCostFilter) cardCostFilter.addEventListener("change", renderTable);
-  if (attackFilter) attackFilter.addEventListener("change", renderTable);
-  if (defenseFilter) defenseFilter.addEventListener("change", renderTable);
-  if (artistFilter) artistFilter.addEventListener("change", renderTable);
-  ownedOnly.addEventListener("change", renderTable);
-  incompleteOnly.addEventListener("change", renderTable);
-  if (extraOnly) extraOnly.addEventListener("change", renderTable);
+  setFilter.addEventListener("change", onFilterChanged);
+  if (classFilter) classFilter.addEventListener("change", onFilterChanged);
+  if (traitFilter) traitFilter.addEventListener("change", onFilterChanged);
+  if (cardTypeFilter) cardTypeFilter.addEventListener("change", onFilterChanged);
+  if (cardCostFilter) cardCostFilter.addEventListener("change", onFilterChanged);
+  if (attackFilter) attackFilter.addEventListener("change", onFilterChanged);
+  if (defenseFilter) defenseFilter.addEventListener("change", onFilterChanged);
+  if (artistFilter) artistFilter.addEventListener("change", onFilterChanged);
+  ownedOnly.addEventListener("change", onFilterChanged);
+  incompleteOnly.addEventListener("change", onFilterChanged);
   if (legalToggle && legalText && legalBackdrop) {
     legalToggle.addEventListener("click", () => {
       const expanded = legalToggle.getAttribute("aria-expanded") === "true";
@@ -2833,6 +3166,7 @@ async function start() {
   createZoomNav();
   createZoomPromoInfo();
   createZoomOwnedInfo();
+  createZoomCardTextInfo();
   bindEvents();
   updateLegalState(false);
   if (!document.body.classList.contains("sidebar-hidden")) {
@@ -2854,11 +3188,7 @@ async function start() {
     populateStatFilters();
     populateArtistFilter();
     populateRarityFilter();
-    requestDeckFileList();
     renderTable();
-    if (rarityOutliers.length) {
-      console.warn("Rarity outliers detected and left uncategorized:", rarityOutliers);
-    }
   } catch (err) {
     tableBody.innerHTML = `<tr><td colspan="6">${String(err.message || err)}</td></tr>`;
   }

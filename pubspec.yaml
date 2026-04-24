@@ -22,7 +22,13 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/www/
+    - assets/www/index.html
+    - assets/www/styles.css
+    - assets/www/app.js
+    - assets/www/manifest.webmanifest
+    - assets/www/sw.js
     - assets/www/assets/
-    - assets/www/assets/cards/
-    - assets/www/data/
+    - assets/www/data/cards-data.js
+    - assets/www/data/offline-art-manifest.json
+    - assets/www/data/text-icon-manifest.json
+    - assets/www/data/shadowverse-cardtype-cache.json

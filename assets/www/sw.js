@@ -1,5 +1,6 @@
-const CACHE_NAME = "sve-offline-v1";
+const CACHE_NAME = "sve-offline-v3";
 const ART_MANIFEST_URL = "./data/offline-art-manifest.json";
+const TEXT_ICON_MANIFEST_URL = "./data/text-icon-manifest.json";
 
 const SHELL_FILES = [
   "./index.html",
@@ -7,12 +8,10 @@ const SHELL_FILES = [
   "./app.js",
   "./manifest.webmanifest",
   "./assets/card-placeholder.svg",
-  "./assets/hero-collection.svg",
-  "./assets/scan-card.svg",
-  "./assets/set-library.svg",
-  "./data/shadowverse-evolve-card-catalog.csv",
+  "./data/cards-data.js",
   "./data/shadowverse-cardtype-cache.json",
   ART_MANIFEST_URL,
+  TEXT_ICON_MANIFEST_URL,
 ];
 
 async function cacheShell() {
@@ -20,15 +19,15 @@ async function cacheShell() {
   await cache.addAll(SHELL_FILES);
 }
 
-async function cacheArtManifestEntries() {
+async function cacheManifestEntries(manifestUrl) {
   const cache = await caches.open(CACHE_NAME);
 
-  let manifestResponse = await cache.match(ART_MANIFEST_URL);
+  let manifestResponse = await cache.match(manifestUrl);
   if (!manifestResponse) {
     try {
-      manifestResponse = await fetch(ART_MANIFEST_URL, { cache: "no-store" });
+      manifestResponse = await fetch(manifestUrl, { cache: "no-store" });
       if (manifestResponse && manifestResponse.ok) {
-        await cache.put(ART_MANIFEST_URL, manifestResponse.clone());
+        await cache.put(manifestUrl, manifestResponse.clone());
       }
     } catch {
       return;
@@ -70,7 +69,8 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const keys = await caches.keys();
       await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
-      await cacheArtManifestEntries();
+      await cacheManifestEntries(ART_MANIFEST_URL);
+      await cacheManifestEntries(TEXT_ICON_MANIFEST_URL);
       await self.clients.claim();
     })()
   );
