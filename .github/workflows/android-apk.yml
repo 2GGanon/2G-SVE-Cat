@@ -251,6 +251,37 @@ jobs:
               print("INTERNET permission already present")
           PY
 
+      - name: Expand card asset directories in pubspec
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          pubspec = Path("pubspec.yaml")
+          cards_root = Path("assets/www/assets/cards")
+          if not cards_root.exists():
+            raise SystemExit("assets/www/assets/cards not found")
+
+          lines = pubspec.read_text(encoding="utf-8").splitlines()
+          card_dirs = sorted([p for p in cards_root.iterdir() if p.is_dir()], key=lambda p: p.name.lower())
+          card_entries = [f"    - assets/www/assets/cards/{d.name}/" for d in card_dirs]
+
+          out = []
+          inserted = False
+          for line in lines:
+            out.append(line)
+            if line.strip() == "- assets/www/assets/cards/" and not inserted:
+              for entry in card_entries:
+                if entry not in out:
+                  out.append(entry)
+              inserted = True
+
+          if not inserted:
+            raise SystemExit("Could not find '- assets/www/assets/cards/' in pubspec.yaml")
+
+          pubspec.write_text("\n".join(out) + "\n", encoding="utf-8")
+          print(f"Added {len(card_entries)} card-set asset directory entries to pubspec.yaml")
+          PY
+
       - name: Install dependencies
         run: flutter pub get
 
