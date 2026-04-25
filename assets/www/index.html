@@ -34,14 +34,43 @@
           <span>Search</span>
           <input id="searchInput" type="text" placeholder="Card name or code" />
         </label>
+        <label class="control">
+          <span>Text</span>
+          <input id="textSearchInput" type="text" placeholder="Text" />
+        </label>
         <button id="searchBtn" class="search-apply-btn" type="button">Search</button>
 
-        <label class="control">
-          <span>Set</span>
-          <select id="setFilter">
-            <option value="">All sets</option>
-          </select>
-        </label>
+        <div class="triple-filter-row">
+          <label class="control compact-control">
+            <span>Set</span>
+            <select id="setFilter">
+              <option value="">All</option>
+            </select>
+          </label>
+
+          <label class="control compact-control">
+            <span>Artist</span>
+            <select id="artistFilter">
+              <option value="">All</option>
+            </select>
+          </label>
+
+          <label class="control compact-control">
+            <span>Keyword</span>
+            <div class="keyword-filter-wrap">
+              <select id="keywordFilter" class="keyword-filter native-hidden" aria-hidden="true" tabindex="-1">
+                <option value="">All</option>
+              </select>
+              <button id="keywordFilterButton" class="keyword-filter-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span id="keywordFilterButtonIcon" class="keyword-filter-button-icon hidden" aria-hidden="true">
+                  <img id="keywordFilterButtonIconImg" alt="" />
+                </span>
+                <span id="keywordFilterButtonLabel">All</span>
+              </button>
+              <div id="keywordFilterMenu" class="keyword-filter-menu hidden" role="listbox" aria-label="Keyword filter"></div>
+            </div>
+          </label>
+        </div>
 
         <div class="triple-filter-row">
           <label class="control compact-control">
@@ -88,13 +117,6 @@
             </select>
           </label>
         </div>
-
-        <label class="control">
-          <span>Artist</span>
-          <select id="artistFilter">
-            <option value="">All artists</option>
-          </select>
-        </label>
 
         <div class="control">
           <span>Rarity</span>

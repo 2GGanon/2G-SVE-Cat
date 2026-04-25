@@ -682,11 +682,18 @@ function initDualGroups() {
 }
 
 const searchInput = document.getElementById("searchInput");
+const textSearchInput = document.getElementById("textSearchInput");
 const searchBtn = document.getElementById("searchBtn");
 const setFilter = document.getElementById("setFilter");
 const classFilter = document.getElementById("classFilter");
 const traitFilter = document.getElementById("traitFilter");
 const cardTypeFilter = document.getElementById("cardTypeFilter");
+const keywordFilter = document.getElementById("keywordFilter");
+const keywordFilterButton = document.getElementById("keywordFilterButton");
+const keywordFilterButtonIcon = document.getElementById("keywordFilterButtonIcon");
+const keywordFilterButtonIconImg = document.getElementById("keywordFilterButtonIconImg");
+const keywordFilterButtonLabel = document.getElementById("keywordFilterButtonLabel");
+const keywordFilterMenu = document.getElementById("keywordFilterMenu");
 const cardCostFilter = document.getElementById("cardCostFilter");
 const attackFilter = document.getElementById("attackFilter");
 const defenseFilter = document.getElementById("defenseFilter");
@@ -752,10 +759,50 @@ const RARITY_SORT_ORDER = [
 const RARITY_FILTER_GROUP_ORDER = [
   "Base",
   "High",
-  "Leader",
   "Promo",
+  "Leader",
   "Token",
   "Evo Point",
+];
+
+const KEYWORD_ICON_META = {
+  act: { label: "Act", url: "./assets/texticons/icon_act.png" },
+  adv: { label: "Adv", url: "./assets/texticons/icon_adv.png" },
+  engage: { label: "Engage", url: "./assets/texticons/icon_stand.png" },
+  evolve: { label: "Evolve", url: "./assets/texticons/icon_evolve.png" },
+  fanfare: { label: "Fanfare", url: "./assets/texticons/icon_fanfare.png" },
+  feed: { label: "Feed", url: "./assets/texticons/icon_carrot.png" },
+  lastwords: { label: "Last Words", url: "./assets/texticons/icon_lastword.png" },
+  q: { label: "Q", url: "./assets/texticons/icon_q.png" },
+  quick: { label: "Quick", url: "./assets/texticons/icon_quick.png" },
+  ride: { label: "Ride", url: "./assets/texticons/icon_ride.png" },
+};
+
+const TEXT_ONLY_KEYWORDS = [
+  "On Evolve",
+  "Strike",
+  "Intimidate",
+  "Aura",
+  "Rush",
+  "Assail",
+  "Ward",
+  "Storm",
+  "Drain",
+  "Bane",
+  "Combo",
+  "Spellchain",
+  "Earth Rite",
+  "Stack",
+  "Overflow",
+  "Necrocharge",
+  "Sanguine",
+  "On Race",
+  "Serve",
+  "Lesson",
+  "Starting Amulet",
+  "Single Drive",
+  "Twin Drive",
+  "On Drive",
 ];
 
 let cards = [];
@@ -770,6 +817,7 @@ let zoomCardTextInfo = null;
 let rarityOutliers = [];
 let dualGroupByCode = new Map();
 let appliedSearchText = "";
+let appliedCardTextSearch = "";
 let scanInFlight = false;
 let scanCodeAliasMap = new Map();
 let scanNameAliasMap = new Map();
@@ -782,6 +830,7 @@ let fullFilterOptionState = {
   classNames: [],
   traits: [],
   cardTypes: [],
+  keywords: [],
   cardCosts: [],
   attacks: [],
   defenses: [],
@@ -1967,6 +2016,40 @@ function populateClassFilter() {
   });
 }
 
+function keywordLabelForToken(token) {
+  return KEYWORD_ICON_META[token]?.label || token;
+}
+
+function keywordIconUrlForLabel(label) {
+  const match = Object.values(KEYWORD_ICON_META).find((meta) => meta.label === label);
+  return match ? match.url : "";
+}
+
+function extractCardTextKeywords(cardText) {
+  const keywords = new Set();
+  const plainText = String(cardText || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const altMatches = String(cardText || "").matchAll(/alt="(\[[^"]+\])"/gi);
+  for (const match of altMatches) {
+    const token = String(match[1] || "")
+      .replace(/^\[|\]$/g, "")
+      .trim()
+      .toLowerCase();
+    if (Object.hasOwn(KEYWORD_ICON_META, token)) {
+      keywords.add(keywordLabelForToken(token));
+    }
+  }
+  TEXT_ONLY_KEYWORDS.forEach((keyword) => {
+    const pattern = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i");
+    if (pattern.test(plainText)) {
+      keywords.add(keyword);
+    }
+  });
+  return [...keywords];
+}
+
 function populateTraitFilter() {
   if (!traitFilter) return;
   const traits = fullFilterOptionState.traits;
@@ -1989,6 +2072,99 @@ function populateCardTypeFilter() {
     opt.textContent = cardType;
     cardTypeFilter.appendChild(opt);
   });
+}
+
+function applyKeywordFilterVisual() {
+  if (!keywordFilter) return;
+  const label = keywordFilter.value || "All";
+  const iconUrl = keywordIconUrlForLabel(keywordFilter.value || "");
+  if (keywordFilterButtonLabel) {
+    keywordFilterButtonLabel.textContent = label;
+  }
+  if (keywordFilterButtonIcon && keywordFilterButtonIconImg) {
+    keywordFilterButtonIcon.classList.toggle("hidden", !iconUrl);
+    if (iconUrl) {
+      keywordFilterButtonIconImg.src = iconUrl;
+    } else {
+      keywordFilterButtonIconImg.removeAttribute("src");
+    }
+  }
+  if (keywordFilterButton) {
+    keywordFilterButton.setAttribute("aria-expanded", String(!keywordFilterMenu?.classList.contains("hidden")));
+  }
+}
+
+function closeKeywordFilterMenu() {
+  if (!keywordFilterMenu || !keywordFilterButton) return;
+  keywordFilterMenu.classList.add("hidden");
+  keywordFilterButton.setAttribute("aria-expanded", "false");
+}
+
+function openKeywordFilterMenu() {
+  if (!keywordFilterMenu || !keywordFilterButton) return;
+  keywordFilterMenu.classList.remove("hidden");
+  keywordFilterButton.setAttribute("aria-expanded", "true");
+}
+
+function rebuildKeywordFilterMenu() {
+  if (!keywordFilterMenu || !keywordFilter) return;
+  keywordFilterMenu.innerHTML = "";
+
+  const options = [{ value: "", label: "All", iconUrl: "" }].concat(
+    fullFilterOptionState.keywords.map((keyword) => ({
+      value: keyword,
+      label: keyword,
+      iconUrl: keywordIconUrlForLabel(keyword),
+    }))
+  );
+
+  options.forEach((option) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "keyword-filter-option";
+    btn.setAttribute("role", "option");
+    btn.setAttribute("aria-selected", String(keywordFilter.value === option.value));
+    if (keywordFilter.value === option.value) {
+      btn.classList.add("is-selected");
+    }
+    btn.innerHTML = option.iconUrl
+      ? `<img src="${option.iconUrl}" alt="" aria-hidden="true" /><span>${option.label}</span>`
+      : `<span>${option.label}</span>`;
+    btn.addEventListener("click", () => {
+      keywordFilter.value = option.value;
+      applyKeywordFilterVisual();
+      rebuildKeywordFilterMenu();
+      closeKeywordFilterMenu();
+      keywordFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    keywordFilterMenu.appendChild(btn);
+  });
+}
+
+function toggleKeywordFilterMenu() {
+  if (!keywordFilterMenu || !keywordFilterButton) return;
+  if (keywordFilterMenu.classList.contains("hidden")) {
+    openKeywordFilterMenu();
+  } else {
+    closeKeywordFilterMenu();
+  }
+}
+
+function populateKeywordFilter() {
+  if (!keywordFilter) return;
+  const currentValue = keywordFilter.value;
+  keywordFilter.innerHTML = '<option value="">All</option>';
+  fullFilterOptionState.keywords.forEach((keyword) => {
+    const opt = document.createElement("option");
+    opt.value = keyword;
+    opt.textContent = keyword;
+    keywordFilter.appendChild(opt);
+  });
+  if (currentValue && [...keywordFilter.options].some((option) => option.value === currentValue)) {
+    keywordFilter.value = currentValue;
+  }
+  rebuildKeywordFilterMenu();
+  applyKeywordFilterVisual();
 }
 
 function sortStatValues(values) {
@@ -2028,7 +2204,7 @@ function populateArtistFilter() {
     ...discovered.filter((artist) => artist === "TBD"),
     ...discovered.filter((artist) => artist !== "TBD").sort((a, b) => a.localeCompare(b)),
   ];
-  artistFilter.innerHTML = '<option value="">All artists</option>';
+  artistFilter.innerHTML = '<option value="">All</option>';
   artists.forEach((artist) => {
     const opt = document.createElement("option");
     opt.value = artist;
@@ -2053,7 +2229,7 @@ function populateRarityFilter() {
       renderTable();
     });
     const text = document.createElement("span");
-    text.textContent = rarityGroup;
+    text.textContent = rarityGroup === "Evo Point" ? "EP" : rarityGroup;
     label.appendChild(input);
     label.appendChild(text);
     rarityFilterGroup.appendChild(label);
@@ -2069,10 +2245,12 @@ function selectedRarities() {
 
 function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   const text = appliedSearchText;
+  const cardTextSearch = appliedCardTextSearch;
   const set = setFilter.value;
   const className = classFilter ? classFilter.value : "";
   const trait = traitFilter ? traitFilter.value : "";
   const cardType = cardTypeFilter ? cardTypeFilter.value : "";
+  const keyword = keywordFilter ? keywordFilter.value : "";
   const cardCost = cardCostFilter ? cardCostFilter.value : "";
   const attack = attackFilter ? attackFilter.value : "";
   const defense = defenseFilter ? defenseFilter.value : "";
@@ -2087,6 +2265,7 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   if (className && card.className !== className) return false;
   if (trait && !(card.traits || []).includes(trait)) return false;
   if (cardType && !(card.cardTypes || []).includes(cardType)) return false;
+  if (keyword && !(card.keywords || []).includes(keyword)) return false;
   if (cardCost && card.cardCost !== cardCost) return false;
   if (attack && card.attack !== attack) return false;
   if (defense && card.defense !== defense) return false;
@@ -2095,6 +2274,7 @@ function matchesActiveFilters(card, qty = ownedFor(card.code)) {
   if (requireOwned && qty === 0) return false;
   if (requireIncomplete && qty >= playsetLimit) return false;
   if (isDeckViewMode() && deckRequirement === 0) return false;
+  if (cardTextSearch && !String(card.cardText || "").toLowerCase().includes(cardTextSearch)) return false;
   if (!text) return true;
   return card.name.toLowerCase().includes(text) || card.code.toLowerCase().includes(text);
 }
@@ -2489,12 +2669,14 @@ function cardFromCsvRow(row, cardTypeMap) {
   const rawCode = row["Card Code"];
   const rarityInfo = parseRarityFromCardCode(rawCode);
   const parsedCardTypes = parseCardTypes(row["Card Type"]);
+  const parsedKeywords = extractCardTextKeywords(row["Card Text"]);
   return {
     name: row["Card Name"],
     code: rawCode,
     className: row["Class"] || "",
     traits: parseTraits(row["Traits"]),
     cardTypes: parsedCardTypes,
+    keywords: parsedKeywords,
     cardCost: row["Card Cost"] || "",
     attack: row["Attack"] || "",
     defense: row["Defense"] || "",
@@ -2610,6 +2792,7 @@ function buildFullFilterOptionState(parsedRows) {
   const classNames = new Set();
   const traits = new Set();
   const cardTypes = new Set();
+  const keywords = new Set();
   const cardCosts = new Set();
   const attacks = new Set();
   const defenses = new Set();
@@ -2623,6 +2806,7 @@ function buildFullFilterOptionState(parsedRows) {
     if (className) classNames.add(className);
     parseTraits(row["Traits"]).forEach((trait) => traits.add(trait));
     parseCardTypes(row["Card Type"]).forEach((cardType) => cardTypes.add(cardType));
+    extractCardTextKeywords(row["Card Text"]).forEach((keyword) => keywords.add(keyword));
     const cardCost = String(row["Card Cost"] || "").trim();
     const attack = String(row["Attack"] || "").trim();
     const defense = String(row["Defense"] || "").trim();
@@ -2639,6 +2823,7 @@ function buildFullFilterOptionState(parsedRows) {
     classNames: [...classNames],
     traits: [...traits].sort((a, b) => a.localeCompare(b)),
     cardTypes: [...cardTypes].sort((a, b) => a.localeCompare(b)),
+    keywords: [...keywords].sort((a, b) => a.localeCompare(b)),
     cardCosts: [...cardCosts],
     attacks: [...attacks],
     defenses: [...defenses],
@@ -2652,11 +2837,13 @@ function rowMatchesCurrentPriority(row) {
   const className = classFilter ? classFilter.value : "";
   const trait = traitFilter ? traitFilter.value : "";
   const cardType = cardTypeFilter ? cardTypeFilter.value : "";
+  const keyword = keywordFilter ? keywordFilter.value : "";
   const cardCost = cardCostFilter ? cardCostFilter.value : "";
   const attack = attackFilter ? attackFilter.value : "";
   const defense = defenseFilter ? defenseFilter.value : "";
   const artist = artistFilter ? artistFilter.value : "";
   const text = appliedSearchText;
+  const cardTextSearch = appliedCardTextSearch;
   const selected = selectedRarities();
 
   const filterSetCode = filterSetCodeFromCardCode(row["Card Code"]);
@@ -2664,11 +2851,13 @@ function rowMatchesCurrentPriority(row) {
   if (className && String(row["Class"] || "") !== className) return false;
   if (trait && !parseTraits(row["Traits"]).includes(trait)) return false;
   if (cardType && !parseCardTypes(row["Card Type"]).includes(cardType)) return false;
+  if (keyword && !extractCardTextKeywords(row["Card Text"]).includes(keyword)) return false;
   if (cardCost && String(row["Card Cost"] || "") !== cardCost) return false;
   if (attack && String(row["Attack"] || "") !== attack) return false;
   if (defense && String(row["Defense"] || "") !== defense) return false;
   if (artist && (String(row["Artist"] || "Uncredited").trim() || "Uncredited") !== artist) return false;
   if (selected.size > 0 && !selected.has(rarityFilterBucket(parseRarityFromCardCode(row["Card Code"]).rarity))) return false;
+  if (cardTextSearch && !String(row["Card Text"] || "").toLowerCase().includes(cardTextSearch)) return false;
   if (!text) return true;
   const lowerText = text.toLowerCase();
   return String(row["Card Name"] || "").toLowerCase().includes(lowerText) || String(row["Card Code"] || "").toLowerCase().includes(lowerText);
@@ -3020,20 +3209,42 @@ function bindEvents() {
     renderTable();
   };
 
-  searchBtn.addEventListener("click", () => {
+  const applySearchFilters = () => {
     appliedSearchText = searchInput.value.trim().toLowerCase();
+    appliedCardTextSearch = textSearchInput ? textSearchInput.value.trim().toLowerCase() : "";
     onFilterChanged();
+  };
+
+  searchBtn.addEventListener("click", () => {
+    applySearchFilters();
   });
   searchInput.addEventListener("keydown", (ev) => {
     if (ev.key !== "Enter") return;
     ev.preventDefault();
-    appliedSearchText = searchInput.value.trim().toLowerCase();
-    onFilterChanged();
+    applySearchFilters();
   });
+  if (textSearchInput) {
+    textSearchInput.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      applySearchFilters();
+    });
+  }
   setFilter.addEventListener("change", onFilterChanged);
   if (classFilter) classFilter.addEventListener("change", onFilterChanged);
   if (traitFilter) traitFilter.addEventListener("change", onFilterChanged);
   if (cardTypeFilter) cardTypeFilter.addEventListener("change", onFilterChanged);
+  if (keywordFilter) keywordFilter.addEventListener("change", () => {
+    applyKeywordFilterVisual();
+    rebuildKeywordFilterMenu();
+    onFilterChanged();
+  });
+  if (keywordFilterButton) {
+    keywordFilterButton.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      toggleKeywordFilterMenu();
+    });
+  }
   if (cardCostFilter) cardCostFilter.addEventListener("change", onFilterChanged);
   if (attackFilter) attackFilter.addEventListener("change", onFilterChanged);
   if (defenseFilter) defenseFilter.addEventListener("change", onFilterChanged);
@@ -3052,6 +3263,12 @@ function bindEvents() {
       if (ev.key === "Escape") updateLegalState(false);
     });
   }
+  document.addEventListener("click", (ev) => {
+    if (!keywordFilterMenu || !keywordFilterButton) return;
+    if (keywordFilterMenu.classList.contains("hidden")) return;
+    if (ev.target.closest("#keywordFilterMenu") || ev.target.closest("#keywordFilterButton")) return;
+    closeKeywordFilterMenu();
+  });
   sidebarToggle.addEventListener("click", () => {
     const willShow = document.body.classList.contains("sidebar-hidden");
     setSearchSidebarVisible(willShow);
@@ -3185,6 +3402,7 @@ async function start() {
     populateClassFilter();
     populateTraitFilter();
     populateCardTypeFilter();
+    populateKeywordFilter();
     populateStatFilters();
     populateArtistFilter();
     populateRarityFilter();
