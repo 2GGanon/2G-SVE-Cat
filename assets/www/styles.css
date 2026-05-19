@@ -37,6 +37,53 @@ body {
     linear-gradient(180deg, #080d18 0%, #0b1324 45%, var(--bg) 100%);
 }
 
+body.startup-loading {
+  overflow: hidden;
+}
+
+.startup-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 85% -10%, #1f3872 0%, transparent 45%),
+    radial-gradient(circle at -10% 10%, #24325a 0%, transparent 38%),
+    linear-gradient(180deg, #080d18 0%, #0b1324 45%, var(--bg) 100%);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+
+.startup-splash-inner {
+  display: grid;
+  place-items: center;
+}
+
+.startup-splash-art {
+  width: clamp(104px, 18vw, 148px);
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.38));
+  animation: startup-float 1.15s ease-in-out infinite alternate;
+}
+
+body.startup-ready .startup-splash {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@keyframes startup-float {
+  from {
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    transform: translateY(4px) scale(1);
+  }
+}
+
 .app-header {
   position: relative;
   z-index: 800;
@@ -335,6 +382,13 @@ body.actions-sidebar-hidden .layout {
 .triple-filter-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.42rem;
+  align-items: end;
+}
+
+.dual-filter-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.42rem;
   align-items: end;
 }
@@ -846,11 +900,11 @@ table td:nth-child(6) {
 .card-art.zoomed {
   position: fixed;
   left: 50%;
-  top: 50%;
+  top: calc(50% - 5.25rem);
   transform: translate(-50%, -50%);
   width: min(78vw, 320px);
   max-width: 78vw;
-  max-height: 78vh;
+  max-height: 56vh;
   z-index: 1200;
   cursor: zoom-out;
 }
@@ -935,7 +989,7 @@ body.zoom-active .zoom-nav {
   bottom: 3.3rem;
   transform: translateX(-50%);
   width: min(92vw, 620px);
-  max-height: min(26vh, 220px);
+  max-height: min(22vh, 190px);
   overflow: auto;
   padding: 0.65rem 0.75rem;
   border-radius: 10px;
@@ -1088,14 +1142,14 @@ body.zoom-active .zoom-nav {
   }
 
   .zoom-card-text-info {
-    bottom: 3rem;
+    bottom: 2.7rem;
     width: min(94vw, 560px);
-    max-height: min(24vh, 180px);
+    max-height: min(20vh, 150px);
     font-size: 0.78rem;
   }
 
   .zoom-owned-info {
-    bottom: 12.2rem;
+    bottom: 10.4rem;
   }
 
   .filters {
@@ -1103,7 +1157,8 @@ body.zoom-active .zoom-nav {
   }
 
   .rarity-group {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem 0.45rem;
   }
 
   .stat-filter-row {
@@ -1111,6 +1166,10 @@ body.zoom-active .zoom-nav {
   }
 
   .triple-filter-row {
+    gap: 0.35rem;
+  }
+
+  .dual-filter-row {
     gap: 0.35rem;
   }
 

@@ -8,7 +8,12 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body>
+  <body class="startup-loading">
+    <div id="startupSplash" class="startup-splash" aria-hidden="true">
+      <div class="startup-splash-inner">
+        <img class="startup-splash-art" src="./assets/2G.avif" alt="" />
+      </div>
+    </div>
     <div id="legalBackdrop" class="legal-backdrop hidden"></div>
     <header class="app-header">
       <div class="header-left">
@@ -40,7 +45,7 @@
         </label>
         <button id="searchBtn" class="search-apply-btn" type="button">Search</button>
 
-        <div class="triple-filter-row">
+        <div class="triple-filter-row keyword-top-row">
           <label class="control compact-control">
             <span>Set</span>
             <select id="setFilter">
@@ -49,8 +54,8 @@
           </label>
 
           <label class="control compact-control">
-            <span>Artist</span>
-            <select id="artistFilter">
+            <span>Class</span>
+            <select id="classFilter">
               <option value="">All</option>
             </select>
           </label>
@@ -74,8 +79,8 @@
 
         <div class="triple-filter-row">
           <label class="control compact-control">
-            <span>Class</span>
-            <select id="classFilter">
+            <span>Artist</span>
+            <select id="artistFilter">
               <option value="">All</option>
             </select>
           </label>
@@ -170,7 +175,7 @@
       </div>
     </section>
 
-    <main class="layout">
+    <main class="layout" id="cataloguePanel">
       <section class="table-wrap">
         <table>
           <thead>
@@ -240,5 +245,3 @@
     <script src="./app.js"></script>
   </body>
 </html>
-
-

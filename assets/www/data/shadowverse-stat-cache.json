@@ -16584,6 +16584,1061 @@
     "Card Cost": "5",
     "Defense": "4"
   },
+  "BP17-001EN": {
+    "Attack": "2",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-002EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-003EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-004EN": {
+    "Attack": "4",
+    "Card Cost": "4",
+    "Defense": "5"
+  },
+  "BP17-005EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-006EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-007EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-008EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-009EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-010EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-011EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-012EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-013EN": {
+    "Attack": "3",
+    "Card Cost": "4",
+    "Defense": "6"
+  },
+  "BP17-014EN": {
+    "Attack": "5",
+    "Card Cost": "-",
+    "Defense": "8"
+  },
+  "BP17-015EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "BP17-016EN": {
+    "Attack": "5",
+    "Card Cost": "6",
+    "Defense": "5"
+  },
+  "BP17-017EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-018EN": {
+    "Attack": "4",
+    "Card Cost": "4",
+    "Defense": "4"
+  },
+  "BP17-019EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "BP17-020EN": {
+    "Attack": "3",
+    "Card Cost": "4",
+    "Defense": "4"
+  },
+  "BP17-021EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "5"
+  },
+  "BP17-022EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-023EN": {
+    "Attack": "4",
+    "Card Cost": "8",
+    "Defense": "4"
+  },
+  "BP17-024EN": {
+    "Attack": "5",
+    "Card Cost": "-",
+    "Defense": "5"
+  },
+  "BP17-025EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "BP17-026EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "BP17-027EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-028EN": {
+    "Attack": "5",
+    "Card Cost": "-",
+    "Defense": "5"
+  },
+  "BP17-029EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "BP17-030EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-031EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-032EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-033EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-034EN": {
+    "Attack": "5",
+    "Card Cost": "6",
+    "Defense": "6"
+  },
+  "BP17-035EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-036EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-037EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-038EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-039EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-040EN": {
+    "Attack": "5",
+    "Card Cost": "5",
+    "Defense": "5"
+  },
+  "BP17-041EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-042EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-043EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-044EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "BP17-045EN": {
+    "Attack": "2",
+    "Card Cost": "4",
+    "Defense": "2"
+  },
+  "BP17-046EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-047EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-048EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-049EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-050EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-051EN": {
+    "Attack": "1",
+    "Card Cost": "4",
+    "Defense": "3"
+  },
+  "BP17-052EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "3"
+  },
+  "BP17-053EN": {
+    "Attack": "5",
+    "Card Cost": "5",
+    "Defense": "5"
+  },
+  "BP17-054EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-055EN": {
+    "Attack": "4",
+    "Card Cost": "3",
+    "Defense": "2"
+  },
+  "BP17-056EN": {
+    "Attack": "5",
+    "Card Cost": "6",
+    "Defense": "5"
+  },
+  "BP17-057EN": {
+    "Attack": "5",
+    "Card Cost": "5",
+    "Defense": "5"
+  },
+  "BP17-058EN": {
+    "Attack": "6",
+    "Card Cost": "-",
+    "Defense": "6"
+  },
+  "BP17-059EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-060EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-061EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "BP17-062EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-063EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-064EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-065EN": {
+    "Attack": "3",
+    "Card Cost": "4",
+    "Defense": "5"
+  },
+  "BP17-066EN": {
+    "Attack": "-",
+    "Card Cost": "8",
+    "Defense": "-"
+  },
+  "BP17-067EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-068EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-069EN": {
+    "Attack": "5",
+    "Card Cost": "6",
+    "Defense": "5"
+  },
+  "BP17-070EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "4"
+  },
+  "BP17-071EN": {
+    "Attack": "0",
+    "Card Cost": "2",
+    "Defense": "4"
+  },
+  "BP17-072EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-073EN": {
+    "Attack": "0",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-074EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-075EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-076EN": {
+    "Attack": "2",
+    "Card Cost": "3",
+    "Defense": "2"
+  },
+  "BP17-077EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "BP17-078EN": {
+    "Attack": "2",
+    "Card Cost": "-",
+    "Defense": "2"
+  },
+  "BP17-079EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-080EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-081EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-082EN": {
+    "Attack": "2",
+    "Card Cost": "-",
+    "Defense": "2"
+  },
+  "BP17-083EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "BP17-084EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-085EN": {
+    "Attack": "2",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-086EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-087EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-088EN": {
+    "Attack": "4",
+    "Card Cost": "6",
+    "Defense": "5"
+  },
+  "BP17-089EN": {
+    "Attack": "2",
+    "Card Cost": "5",
+    "Defense": "4"
+  },
+  "BP17-090EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "BP17-091EN": {
+    "Attack": "2",
+    "Card Cost": "3",
+    "Defense": "4"
+  },
+  "BP17-092EN": {
+    "Attack": "6",
+    "Card Cost": "7",
+    "Defense": "6"
+  },
+  "BP17-093EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-094EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-095EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-096EN": {
+    "Attack": "2",
+    "Card Cost": "4",
+    "Defense": "2"
+  },
+  "BP17-097EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-098EN": {
+    "Attack": "3",
+    "Card Cost": "5",
+    "Defense": "3"
+  },
+  "BP17-099EN": {
+    "Attack": "3",
+    "Card Cost": "4",
+    "Defense": "3"
+  },
+  "BP17-100EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-101EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-102EN": {
+    "Attack": "-",
+    "Card Cost": "6",
+    "Defense": "-"
+  },
+  "BP17-103EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-104EN": {
+    "Attack": "4",
+    "Card Cost": "7",
+    "Defense": "5"
+  },
+  "BP17-105EN": {
+    "Attack": "5",
+    "Card Cost": "-",
+    "Defense": "6"
+  },
+  "BP17-106EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-107EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "BP17-108EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-109EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-110EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-111EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-112EN": {
+    "Attack": "-",
+    "Card Cost": "5",
+    "Defense": "-"
+  },
+  "BP17-113EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "BP17-114EN": {
+    "Attack": "2",
+    "Card Cost": "-",
+    "Defense": "2"
+  },
+  "BP17-115EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "4"
+  },
+  "BP17-116EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-117EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-118EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-119EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-P01EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-P02EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-P03EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-P04EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-P05EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "BP17-P06EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "BP17-P07EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-P08EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-P09EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-P10EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-P11EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "BP17-P12EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-P13EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-P14EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-P15EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-P16EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-P17EN": {
+    "Attack": "0",
+    "Card Cost": "2",
+    "Defense": "4"
+  },
+  "BP17-P18EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-P19EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-P20EN": {
+    "Attack": "2",
+    "Card Cost": "-",
+    "Defense": "2"
+  },
+  "BP17-P21EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-P22EN": {
+    "Attack": "2",
+    "Card Cost": "4",
+    "Defense": "2"
+  },
+  "BP17-P23EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-P24EN": {
+    "Attack": "3",
+    "Card Cost": "5",
+    "Defense": "3"
+  },
+  "BP17-P25EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-P26EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-P27EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-P28EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-P29EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-P30EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-P31EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-P32EN": {
+    "Attack": "-",
+    "Card Cost": "5",
+    "Defense": "-"
+  },
+  "BP17-P33EN": {
+    "Attack": "-",
+    "Card Cost": "0",
+    "Defense": "-"
+  },
+  "BP17-P34EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-P35EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-SL01EN": {
+    "Attack": "2",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-SL02EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-SL03EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-SL04EN": {
+    "Attack": "4",
+    "Card Cost": "4",
+    "Defense": "5"
+  },
+  "BP17-SL05EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "BP17-SL06EN": {
+    "Attack": "3",
+    "Card Cost": "4",
+    "Defense": "4"
+  },
+  "BP17-SL07EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "5"
+  },
+  "BP17-SL08EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-SL09EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-SL10EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-SL11EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-SL12EN": {
+    "Attack": "5",
+    "Card Cost": "5",
+    "Defense": "5"
+  },
+  "BP17-SL13EN": {
+    "Attack": "4",
+    "Card Cost": "3",
+    "Defense": "2"
+  },
+  "BP17-SL14EN": {
+    "Attack": "5",
+    "Card Cost": "6",
+    "Defense": "5"
+  },
+  "BP17-SL15EN": {
+    "Attack": "5",
+    "Card Cost": "5",
+    "Defense": "5"
+  },
+  "BP17-SL16EN": {
+    "Attack": "6",
+    "Card Cost": "-",
+    "Defense": "6"
+  },
+  "BP17-SL17EN": {
+    "Attack": "0",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-SL18EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "BP17-SL19EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-SL20EN": {
+    "Attack": "2",
+    "Card Cost": "3",
+    "Defense": "2"
+  },
+  "BP17-SL21EN": {
+    "Attack": "2",
+    "Card Cost": "3",
+    "Defense": "4"
+  },
+  "BP17-SL22EN": {
+    "Attack": "6",
+    "Card Cost": "7",
+    "Defense": "6"
+  },
+  "BP17-SL23EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-SL24EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-SL25EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-SL26EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-SL27EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-SL28EN": {
+    "Attack": "-",
+    "Card Cost": "5",
+    "Defense": "-"
+  },
+  "BP17-SP01EN": {
+    "Attack": "0",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-T01EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-T02EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-T03EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-T04EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "BP17-T05EN": {
+    "Attack": "-",
+    "Card Cost": "5",
+    "Defense": "-"
+  },
+  "BP17-T06EN": {
+    "Attack": "-",
+    "Card Cost": "0",
+    "Defense": "-"
+  },
+  "BP17-T07EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-T08EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-T09EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-T10EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-T11EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-T12EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "BP17-T13EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-T14EN": {
+    "Attack": "2",
+    "Card Cost": "3",
+    "Defense": "4"
+  },
+  "BP17-T15EN": {
+    "Attack": "4",
+    "Card Cost": "3",
+    "Defense": "2"
+  },
+  "BP17-T16EN": {
+    "Attack": "3",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-T17EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-T18EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-T19EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "BP17-U01EN": {
+    "Attack": "2",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-U02EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "BP17-U03EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "BP17-U04EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "BP17-U05EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "BP17-U06EN": {
+    "Attack": "4",
+    "Card Cost": "3",
+    "Defense": "2"
+  },
+  "BP17-U07EN": {
+    "Attack": "0",
+    "Card Cost": "1",
+    "Defense": "2"
+  },
+  "BP17-U08EN": {
+    "Attack": "2",
+    "Card Cost": "3",
+    "Defense": "4"
+  },
+  "BP17-U09EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
   "BSF2024-001EN": {
     "Attack": "9",
     "Card Cost": "9",
@@ -27559,6 +28614,211 @@
     "Card Cost": "4",
     "Defense": "4"
   },
+  "PR-405EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "PR-406EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "PR-407EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "PR-408EN": {
+    "Attack": "-",
+    "Card Cost": "4",
+    "Defense": "-"
+  },
+  "PR-409EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "PR-410EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "PR-411EN": {
+    "Attack": "2",
+    "Card Cost": "-",
+    "Defense": "2"
+  },
+  "PR-412EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "PR-413EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "PR-414EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "PR-415EN": {
+    "Attack": "-",
+    "Card Cost": "4",
+    "Defense": "-"
+  },
+  "PR-416EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "PR-417EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "PR-418EN": {
+    "Attack": "2",
+    "Card Cost": "-",
+    "Defense": "2"
+  },
+  "PR-419EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "PR-420EN": {
+    "Attack": "2",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "PR-421EN": {
+    "Attack": "3",
+    "Card Cost": "-",
+    "Defense": "3"
+  },
+  "PR-422EN": {
+    "Attack": "2",
+    "Card Cost": "5",
+    "Defense": "2"
+  },
+  "PR-423EN": {
+    "Attack": "6",
+    "Card Cost": "5",
+    "Defense": "6"
+  },
+  "PR-424EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "PR-425EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "PR-426EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "PR-427EN": {
+    "Attack": "4",
+    "Card Cost": "4",
+    "Defense": "4"
+  },
+  "PR-428EN": {
+    "Attack": "3",
+    "Card Cost": "6",
+    "Defense": "3"
+  },
+  "PR-429EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "PR-430EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "PR-431EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "PR-432EN": {
+    "Attack": "3",
+    "Card Cost": "3",
+    "Defense": "3"
+  },
+  "PR-433EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "PR-434EN": {
+    "Attack": "4",
+    "Card Cost": "4",
+    "Defense": "4"
+  },
+  "PR-435EN": {
+    "Attack": "3",
+    "Card Cost": "6",
+    "Defense": "3"
+  },
+  "PR-436EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "PR-437EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "PR-438EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "PR-439EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "2"
+  },
+  "PR-440EN": {
+    "Attack": "4",
+    "Card Cost": "5",
+    "Defense": "4"
+  },
+  "PR-441EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "PR-442EN": {
+    "Attack": "-",
+    "Card Cost": "-",
+    "Defense": "-"
+  },
+  "PR-443EN": {
+    "Attack": "0",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "PR-444EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
+  "PR-445EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
   "PR-446EN": {
     "Attack": "2",
     "Card Cost": "4",
@@ -27668,6 +28928,71 @@
     "Attack": "-",
     "Card Cost": "2",
     "Defense": "-"
+  },
+  "PR-468EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "PR-469EN": {
+    "Attack": "-",
+    "Card Cost": "3",
+    "Defense": "-"
+  },
+  "PR-470EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "PR-471EN": {
+    "Attack": "-",
+    "Card Cost": "8",
+    "Defense": "-"
+  },
+  "PR-472EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "PR-473EN": {
+    "Attack": "-",
+    "Card Cost": "1",
+    "Defense": "-"
+  },
+  "PR-474EN": {
+    "Attack": "1",
+    "Card Cost": "1",
+    "Defense": "1"
+  },
+  "PR-475EN": {
+    "Attack": "2",
+    "Card Cost": "-",
+    "Defense": "2"
+  },
+  "PR-476EN": {
+    "Attack": "-",
+    "Card Cost": "2",
+    "Defense": "-"
+  },
+  "PR-477EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "PR-478EN": {
+    "Attack": "4",
+    "Card Cost": "-",
+    "Defense": "4"
+  },
+  "PR-479EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "1"
+  },
+  "PR-480EN": {
+    "Attack": "1",
+    "Card Cost": "2",
+    "Defense": "3"
   },
   "SD01-001EN": {
     "Attack": "5",
@@ -29992,211 +31317,6 @@
   "SS02-U01EN": {
     "Attack": "-",
     "Card Cost": "2",
-    "Defense": "-"
-  },
-  "PR-405EN": {
-    "Card Cost": "2",
-    "Attack": "2",
-    "Defense": "1"
-  },
-  "PR-406EN": {
-    "Attack": "1",
-    "Card Cost": "1",
-    "Defense": "1"
-  },
-  "PR-407EN": {
-    "Attack": "-",
-    "Card Cost": "3",
-    "Defense": "-"
-  },
-  "PR-408EN": {
-    "Attack": "-",
-    "Card Cost": "4",
-    "Defense": "-"
-  },
-  "PR-409EN": {
-    "Attack": "-",
-    "Card Cost": "1",
-    "Defense": "-"
-  },
-  "PR-410EN": {
-    "Attack": "1",
-    "Card Cost": "2",
-    "Defense": "1"
-  },
-  "PR-411EN": {
-    "Attack": "2",
-    "Card Cost": "-",
-    "Defense": "2"
-  },
-  "PR-412EN": {
-    "Attack": "2",
-    "Card Cost": "2",
-    "Defense": "1"
-  },
-  "PR-413EN": {
-    "Attack": "1",
-    "Card Cost": "1",
-    "Defense": "1"
-  },
-  "PR-414EN": {
-    "Attack": "-",
-    "Card Cost": "3",
-    "Defense": "-"
-  },
-  "PR-415EN": {
-    "Attack": "-",
-    "Card Cost": "4",
-    "Defense": "-"
-  },
-  "PR-416EN": {
-    "Attack": "-",
-    "Card Cost": "1",
-    "Defense": "-"
-  },
-  "PR-417EN": {
-    "Attack": "1",
-    "Card Cost": "2",
-    "Defense": "1"
-  },
-  "PR-418EN": {
-    "Attack": "2",
-    "Card Cost": "-",
-    "Defense": "2"
-  },
-  "PR-419EN": {
-    "Attack": "3",
-    "Card Cost": "3",
-    "Defense": "3"
-  },
-  "PR-420EN": {
-    "Attack": "2",
-    "Card Cost": "1",
-    "Defense": "1"
-  },
-  "PR-421EN": {
-    "Attack": "3",
-    "Card Cost": "-",
-    "Defense": "3"
-  },
-  "PR-422EN": {
-    "Attack": "2",
-    "Card Cost": "5",
-    "Defense": "2"
-  },
-  "PR-423EN": {
-    "Attack": "6",
-    "Card Cost": "5",
-    "Defense": "6"
-  },
-  "PR-424EN": {
-    "Attack": "3",
-    "Card Cost": "3",
-    "Defense": "3"
-  },
-  "PR-425EN": {
-    "Attack": "3",
-    "Card Cost": "3",
-    "Defense": "3"
-  },
-  "PR-426EN": {
-    "Attack": "4",
-    "Card Cost": "-",
-    "Defense": "4"
-  },
-  "PR-427EN": {
-    "Attack": "4",
-    "Card Cost": "4",
-    "Defense": "4"
-  },
-  "PR-428EN": {
-    "Attack": "3",
-    "Card Cost": "6",
-    "Defense": "3"
-  },
-  "PR-429EN": {
-    "Attack": "-",
-    "Card Cost": "1",
-    "Defense": "-"
-  },
-  "PR-430EN": {
-    "Attack": "1",
-    "Card Cost": "2",
-    "Defense": "3"
-  },
-  "PR-431EN": {
-    "Attack": "2",
-    "Card Cost": "2",
-    "Defense": "3"
-  },
-  "PR-432EN": {
-    "Attack": "3",
-    "Card Cost": "3",
-    "Defense": "3"
-  },
-  "PR-433EN": {
-    "Attack": "4",
-    "Card Cost": "-",
-    "Defense": "4"
-  },
-  "PR-434EN": {
-    "Attack": "4",
-    "Card Cost": "4",
-    "Defense": "4"
-  },
-  "PR-435EN": {
-    "Attack": "3",
-    "Card Cost": "6",
-    "Defense": "3"
-  },
-  "PR-436EN": {
-    "Attack": "-",
-    "Card Cost": "1",
-    "Defense": "-"
-  },
-  "PR-437EN": {
-    "Attack": "1",
-    "Card Cost": "2",
-    "Defense": "3"
-  },
-  "PR-438EN": {
-    "Attack": "2",
-    "Card Cost": "2",
-    "Defense": "3"
-  },
-  "PR-439EN": {
-    "Attack": "2",
-    "Card Cost": "2",
-    "Defense": "2"
-  },
-  "PR-440EN": {
-    "Attack": "4",
-    "Card Cost": "5",
-    "Defense": "4"
-  },
-  "PR-441EN": {
-    "Attack": "1",
-    "Card Cost": "1",
-    "Defense": "1"
-  },
-  "PR-442EN": {
-    "Attack": "-",
-    "Card Cost": "-",
-    "Defense": "-"
-  },
-  "PR-443EN": {
-    "Attack": "0",
-    "Card Cost": "1",
-    "Defense": "1"
-  },
-  "PR-444EN": {
-    "Attack": "1",
-    "Card Cost": "2",
-    "Defense": "3"
-  },
-  "PR-445EN": {
-    "Attack": "-",
-    "Card Cost": "1",
     "Defense": "-"
   }
 }

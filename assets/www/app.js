@@ -50,6 +50,7 @@ const SET_FILTER_ORDER = [
   "BP14",
   "BP15",
   "BP16",
+  "BP17",
   "SP01",
   "PR",
   "CSD01",
@@ -526,6 +527,7 @@ const SET_NAME_BY_CODE = {
   BP14: "Banquet of Dreams",
   BP15: "Trial of the Omens",
   BP16: "New World Genesis",
+  BP17: "Convergent Destinies",
   SDD01: "Showdown Deck: Forestcraft",
   SDD02: "Showdown Deck: Swordcraft",
   SDD03: "Showdown Deck: Runecraft",
@@ -721,6 +723,7 @@ const deckPasteCancelBtn = document.getElementById("deckPasteCancelBtn");
 const deckPasteConfirmBtn = document.getElementById("deckPasteConfirmBtn");
 const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
+const startupSplash = document.getElementById("startupSplash");
 const legalToggle = document.getElementById("legalToggle");
 const legalText = document.getElementById("legalText");
 const legalBackdrop = document.getElementById("legalBackdrop");
@@ -1894,6 +1897,15 @@ function openDeckPasteModal() {
 
 function closeDeckPasteModal() {
   updateDeckPasteModalState(false);
+}
+
+function markStartupReady() {
+  document.body.classList.remove("startup-loading");
+  document.body.classList.add("startup-ready");
+  if (!startupSplash) return;
+  window.setTimeout(() => {
+    startupSplash.remove();
+  }, 260);
 }
 
 function importPastedDeckToDefault() {
@@ -3409,6 +3421,9 @@ async function start() {
     renderTable();
   } catch (err) {
     tableBody.innerHTML = `<tr><td colspan="6">${String(err.message || err)}</td></tr>`;
+  } finally {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    markStartupReady();
   }
 }
 
