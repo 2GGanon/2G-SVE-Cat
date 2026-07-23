@@ -2627,6 +2627,7 @@ function createRow(card) {
   let dragStartY = 0;
   let dragAnchorValue = 0;
   let dragLastValue = 0;
+  let dragMaxValue = Number.POSITIVE_INFINITY;
   setCardFace(artEl, card, faces[faceIndex]);
   artEl.addEventListener("click", () => {
     if (Date.now() < suppressClickUntil) return;
@@ -2708,7 +2709,7 @@ function createRow(card) {
     if (!bulkAddMode || dragPointerId == null) return;
     const stepSize = 12;
     const deltaSteps = Math.trunc((dragStartY - clientY) / stepSize);
-    const nextValue = Math.max(0, dragAnchorValue + deltaSteps);
+    const nextValue = Math.min(dragMaxValue, Math.max(0, dragAnchorValue + deltaSteps));
     if (nextValue === dragLastValue) return;
     const previousVisibility = matchesActiveFilters(card);
     const appliedValue = setOwnedAbsolute(nextValue, previousVisibility);
@@ -2739,6 +2740,7 @@ function createRow(card) {
       dragStartY = ev.clientY;
       dragAnchorValue = ownedFor(card.code);
       dragLastValue = dragAnchorValue;
+      dragMaxValue = dragAnchorValue >= 3 ? Number.POSITIVE_INFINITY : 3;
       artWrap.classList.add("bulk-add-dragging");
       artWrap.setPointerCapture?.(ev.pointerId);
     });

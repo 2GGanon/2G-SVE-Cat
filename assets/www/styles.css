@@ -788,7 +788,8 @@ tbody tr {
   border-radius: 10px;
   background: #0e1628;
   padding: 0.35rem;
-  width: 100%;
+  width: calc(var(--thumb-w) + 18px);
+  min-width: calc(var(--thumb-w) + 18px);
   max-width: calc(var(--thumb-w) + 18px);
   justify-items: center;
 }
@@ -1043,12 +1044,14 @@ body.zoom-active .zoom-nav {
 
 .owned-controls {
   margin-top: 0.15rem;
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: 1.35rem 3.7ch 1.35rem;
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
   position: relative;
+  width: 100%;
+  max-width: var(--thumb-w);
 }
 
 .qty-btn {
@@ -1069,7 +1072,9 @@ body.zoom-active .zoom-nav {
 }
 
 .qty-value {
-  min-width: 1.5ch;
+  width: 3.7ch;
+  min-width: 3.7ch;
+  max-width: 3.7ch;
   padding: 0.1rem 0.35rem;
   background: rgba(18, 31, 60, 0.92);
   border: 1px solid var(--border);
@@ -1078,6 +1083,10 @@ body.zoom-active .zoom-nav {
   text-align: center;
   font-weight: 700;
   color: #f2f6ff;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  font-variant-numeric: tabular-nums;
 }
 
 body.bulk-add-active .qty-btn {
