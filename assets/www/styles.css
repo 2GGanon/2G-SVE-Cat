@@ -119,8 +119,13 @@ body.startup-ready .startup-splash {
 
 .legal-wrap {
   position: relative;
-  display: flex;
+  display: grid;
   align-items: flex-start;
+}
+
+.header-control-stack {
+  display: grid;
+  gap: 0.35rem;
 }
 
 .legal-toggle {
@@ -132,6 +137,12 @@ body.startup-ready .startup-splash {
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+.bulk-add-toggle[aria-pressed="true"] {
+  background: linear-gradient(135deg, #29457f, #3f6acd);
+  border-color: #9cb7f4;
+  color: #f8fbff;
 }
 
 .legal-text {
@@ -881,6 +892,14 @@ table td:nth-child(6) {
   z-index: 1;
 }
 
+body.bulk-add-active .card-art {
+  cursor: ns-resize;
+}
+
+body.bulk-add-active .art-wrap {
+  touch-action: none;
+}
+
 .dual-toggle {
   position: absolute;
   right: 0.2rem;
@@ -1029,6 +1048,7 @@ body.zoom-active .zoom-nav {
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
+  position: relative;
 }
 
 .qty-btn {
@@ -1058,6 +1078,25 @@ body.zoom-active .zoom-nav {
   text-align: center;
   font-weight: 700;
   color: #f2f6ff;
+}
+
+body.bulk-add-active .qty-btn {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+body.bulk-add-active .qty-value {
+  pointer-events: none;
+}
+
+.art-wrap.bulk-add-dragging + .owned-controls .qty-value {
+  background: rgba(34, 58, 110, 0.98);
+  border-color: #b8ccff;
+  box-shadow: 0 14px 34px rgba(24, 52, 108, 0.44);
+}
+
+body.bulk-add-active .deck-count-badge {
+  display: none;
 }
 
 .promo-source {

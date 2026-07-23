@@ -22,7 +22,7 @@ const DUAL_SIDE_GROUPS = [
   ["BP09-005EN", "BP09-005EN_URA"],
   ["BP09-P12EN", "BP09-P12EN_URA"],
 ];
-const ONE_COPY_SET_CODES = new Set(["GFB01A", "GFB01B", "GFB01C", "GFB01D", "GFD01", "GFD02"]);
+const ONE_COPY_SET_CODES = new Set(["GFB01A", "GFB01B", "GFB01C", "GFB01D", "GFD01", "GFD02", "GFE01"]);
 const CLASS_FILTER_ORDER = [
   "Forestcraft",
   "Swordcraft",
@@ -51,6 +51,7 @@ const SET_FILTER_ORDER = [
   "BP15",
   "BP16",
   "BP17",
+  "BP18",
   "SP01",
   "PR",
   "CSD01",
@@ -64,6 +65,7 @@ const SET_FILTER_ORDER = [
   "GFB01",
   "GFD01",
   "GFD02",
+  "GFE01",
   "SD",
   "SS",
   "SDD",
@@ -528,6 +530,7 @@ const SET_NAME_BY_CODE = {
   BP15: "Trial of the Omens",
   BP16: "New World Genesis",
   BP17: "Convergent Destinies",
+  BP18: "Neometropolis",
   SDD01: "Showdown Deck: Forestcraft",
   SDD02: "Showdown Deck: Swordcraft",
   SDD03: "Showdown Deck: Runecraft",
@@ -554,6 +557,7 @@ const SET_NAME_BY_CODE = {
   GFB01D: "Guide to Glory (Dragoncraft)",
   GFD01: "Luxheart Legends",
   GFD02: "Treacherous Ambitions",
+  GFE01: "Gloryfinder Events Vol. 1",
   SD: "Starter Decks",
   SD01: "Regal Fairy Princess",
   SD02: "Blade of Resentment",
@@ -725,6 +729,7 @@ const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
 const startupSplash = document.getElementById("startupSplash");
 const legalToggle = document.getElementById("legalToggle");
+const bulkAddToggle = document.getElementById("bulkAddToggle");
 const legalText = document.getElementById("legalText");
 const legalBackdrop = document.getElementById("legalBackdrop");
 
@@ -850,6 +855,7 @@ let activeDeck = {
   unmatchedEntries: [],
   textContent: "",
 };
+let bulkAddMode = false;
 
 function prPromoSourceByCode(cardCode) {
   const normalized = normalizeCardCode(cardCode);
@@ -2400,6 +2406,41 @@ function updateLegalState(expanded) {
   legalBackdrop.classList.toggle("hidden", !expanded);
 }
 
+function updateBulkAddUi() {
+  if (bulkAddToggle) {
+    bulkAddToggle.setAttribute("aria-pressed", String(bulkAddMode));
+  }
+  document.body.classList.toggle("bulk-add-active", bulkAddMode);
+}
+
+function refreshBulkAddPresentation() {
+  [...tableBody.querySelectorAll("tr")].forEach((row) => {
+    const card = cardByCode.get(row.dataset.cardCode || "");
+    if (!card) return;
+    const qtyEl = row.querySelector(".qty-value");
+    const deckBadge = row.querySelector(".deck-count-badge");
+    const displayedCount = displayedRowCountForCard(card);
+    const deckQty = deckRequirementForCard(card);
+
+    if (qtyEl) {
+      qtyEl.textContent = String(displayedCount);
+    }
+    if (deckBadge) {
+      deckBadge.textContent = String(deckQty);
+      deckBadge.classList.toggle("hidden", bulkAddMode || !isDeckSelected() || deckQty <= 0);
+    }
+  });
+}
+
+function setBulkAddMode(active) {
+  bulkAddMode = Boolean(active);
+  if (bulkAddMode && document.body.classList.contains("zoom-active")) {
+    closeZoom();
+  }
+  updateBulkAddUi();
+  refreshBulkAddPresentation();
+}
+
 function updateZoomNavState() {
   if (!zoomNavLeft || !zoomNavRight) return;
   const hasMulti = zoomState.cards.length > 1;
@@ -2446,6 +2487,7 @@ function setZoomedElement(nextIndex) {
 }
 
 function openZoomFor(artEl) {
+  if (bulkAddMode) return;
   const name = artEl.dataset.cardName || "";
   const code = artEl.dataset.cardCode || "";
   const baseCode = artEl.dataset.baseCardCode || code;
@@ -2575,12 +2617,19 @@ function createRow(card) {
   tr.dataset.cardCode = card.code;
   const qtyEl = fragment.querySelector(".qty-value");
   const artEl = fragment.querySelector(".card-art");
+  const artWrap = fragment.querySelector(".art-wrap");
   const deckCountBadge = fragment.querySelector(".deck-count-badge");
   const dualBtn = fragment.querySelector(".dual-toggle");
   const faces = cardFaces(card);
   let faceIndex = 0;
+  let suppressClickUntil = 0;
+  let dragPointerId = null;
+  let dragStartY = 0;
+  let dragAnchorValue = 0;
+  let dragLastValue = 0;
   setCardFace(artEl, card, faces[faceIndex]);
   artEl.addEventListener("click", () => {
+    if (Date.now() < suppressClickUntil) return;
     openZoomFor(artEl);
   });
 
@@ -2602,10 +2651,11 @@ function createRow(card) {
 
   function syncDeckPresentation() {
     const deckQty = deckRequirementForCard(card);
-    qtyEl.textContent = String(displayedRowCountForCard(card));
+    const displayedCount = displayedRowCountForCard(card);
+    qtyEl.textContent = String(displayedCount);
     if (deckCountBadge) {
       deckCountBadge.textContent = String(deckQty);
-      deckCountBadge.classList.toggle("hidden", !isDeckSelected() || deckQty <= 0);
+      deckCountBadge.classList.toggle("hidden", bulkAddMode || !isDeckSelected() || deckQty <= 0);
     }
     applyDeckStateToRow(tr, card);
   }
@@ -2613,17 +2663,22 @@ function createRow(card) {
   function updateOwnedCount(delta) {
     const wasVisible = matchesActiveFilters(card);
     const next = ownedFor(card.code) + delta;
-    setOwned(card.code, next);
+    return setOwnedAbsolute(next, wasVisible);
+  }
+
+  function setOwnedAbsolute(nextValue, previousVisibility = matchesActiveFilters(card)) {
+    setOwned(card.code, nextValue);
     const currentQty = ownedFor(card.code);
     const isVisible = matchesActiveFilters(card, currentQty);
     qtyEl.textContent = String(currentQty);
 
-    if (wasVisible !== isVisible) {
+    if (previousVisibility !== isVisible) {
       renderTable();
-      return;
+      return currentQty;
     }
 
     refreshRenderedDeckStateForKey(deckGroupKeyForCard(card));
+    return currentQty;
   }
 
   function updateDeckCount(delta) {
@@ -2635,21 +2690,75 @@ function createRow(card) {
     }
   }
 
-  fragment.querySelector(".dec").addEventListener("click", () => {
-    if (isDeckSelected()) {
-      updateDeckCount(-1);
+  function applyRowDelta(delta) {
+    if (bulkAddMode || !isDeckSelected()) {
+      updateOwnedCount(delta);
       return;
     }
-    updateOwnedCount(-1);
-  });
+    updateDeckCount(delta);
+  }
 
-  fragment.querySelector(".inc").addEventListener("click", () => {
-    if (isDeckSelected()) {
-      updateDeckCount(1);
-      return;
+  function endBulkDrag(pointerId = null) {
+    if (pointerId != null && dragPointerId !== pointerId) return;
+    dragPointerId = null;
+    if (artWrap) artWrap.classList.remove("bulk-add-dragging");
+  }
+
+  function updateBulkDrag(clientY) {
+    if (!bulkAddMode || dragPointerId == null) return;
+    const stepSize = 12;
+    const deltaSteps = Math.trunc((dragStartY - clientY) / stepSize);
+    const nextValue = Math.max(0, dragAnchorValue + deltaSteps);
+    if (nextValue === dragLastValue) return;
+    const previousVisibility = matchesActiveFilters(card);
+    const appliedValue = setOwnedAbsolute(nextValue, previousVisibility);
+    const hapticCount = Math.min(Math.abs(appliedValue - dragLastValue), 4);
+    dragLastValue = appliedValue;
+    for (let index = 0; index < hapticCount; index += 1) {
+      triggerHapticFeedback();
     }
-    updateOwnedCount(1);
-  });
+  }
+
+  function bindQtyButton(button, delta) {
+    if (!button) return;
+    button.addEventListener("click", () => {
+      applyRowDelta(delta);
+    });
+  }
+
+  bindQtyButton(fragment.querySelector(".dec"), -1);
+  bindQtyButton(fragment.querySelector(".inc"), 1);
+
+  if (artWrap) {
+    artWrap.addEventListener("pointerdown", (ev) => {
+      if (!bulkAddMode) return;
+      if (!(ev.target instanceof Element) || ev.target.closest("button")) return;
+      ev.preventDefault();
+      suppressClickUntil = Date.now() + 450;
+      dragPointerId = ev.pointerId;
+      dragStartY = ev.clientY;
+      dragAnchorValue = ownedFor(card.code);
+      dragLastValue = dragAnchorValue;
+      artWrap.classList.add("bulk-add-dragging");
+      artWrap.setPointerCapture?.(ev.pointerId);
+    });
+    artWrap.addEventListener("pointermove", (ev) => {
+      if (dragPointerId !== ev.pointerId) return;
+      ev.preventDefault();
+      updateBulkDrag(ev.clientY);
+    });
+    artWrap.addEventListener("pointerup", (ev) => {
+      if (dragPointerId !== ev.pointerId) return;
+      ev.preventDefault();
+      endBulkDrag(ev.pointerId);
+    });
+    artWrap.addEventListener("pointercancel", (ev) => {
+      endBulkDrag(ev.pointerId);
+    });
+    artWrap.addEventListener("lostpointercapture", () => {
+      endBulkDrag();
+    });
+  }
 
   return tr;
 }
@@ -3275,6 +3384,11 @@ function bindEvents() {
       if (ev.key === "Escape") updateLegalState(false);
     });
   }
+  if (bulkAddToggle) {
+    bulkAddToggle.addEventListener("click", () => {
+      setBulkAddMode(!bulkAddMode);
+    });
+  }
   document.addEventListener("click", (ev) => {
     if (!keywordFilterMenu || !keywordFilterButton) return;
     if (keywordFilterMenu.classList.contains("hidden")) return;
@@ -3407,6 +3521,7 @@ async function start() {
   updateSidebarState();
   updateActionsSidebarState();
   updateDeckModeUi();
+  updateBulkAddUi();
   registerServiceWorker();
   try {
     await loadCards();
