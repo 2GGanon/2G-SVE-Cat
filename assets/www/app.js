@@ -1132,6 +1132,19 @@ function createSyncBackup() {
   updateSyncModalUi();
 }
 
+function seedMissingLocalCollectionTimestamps(seedAt = nowIso()) {
+  let mutated = false;
+  Object.entries(collection).forEach(([code, qty]) => {
+    if (Number(qty) > 0 && !collectionMeta.rowUpdatedAt?.[code]) {
+      collectionMeta.rowUpdatedAt[code] = seedAt;
+      mutated = true;
+    }
+  });
+  if (mutated) {
+    saveCollectionMeta();
+  }
+}
+
 function restoreCollectionBackup() {
   if (!collectionBackup) return false;
   replaceCollectionState(
@@ -1259,20 +1272,36 @@ function applyRemoteCollectionRows(rows, userId) {
 }
 
 async function fetchRemoteCollectionRows(userId) {
-  const query = `/rest/v1/user_card_quantities?select=card_code,owned_count,updated_at&user_id=eq.${encodeURIComponent(userId)}`;
-  const rows = await supabaseRequest(query, { method: "GET" });
-  return Array.isArray(rows) ? rows : [];
+  const pageSize = 1000;
+  let offset = 0;
+  const allRows = [];
+  while (true) {
+    const query =
+      `/rest/v1/user_card_quantities?select=card_code,owned_count,updated_at` +
+      `&user_id=eq.${encodeURIComponent(userId)}` +
+      `&order=card_code.asc&limit=${pageSize}&offset=${offset}`;
+    const rows = await supabaseRequest(query, { method: "GET" });
+    const batch = Array.isArray(rows) ? rows : [];
+    allRows.push(...batch);
+    if (batch.length < pageSize) break;
+    offset += pageSize;
+  }
+  return allRows;
 }
 
 async function upsertRemoteCollectionRows(rows) {
   if (!rows.length) return;
-  await supabaseRequest("/rest/v1/user_card_quantities?on_conflict=user_id,card_code", {
-    method: "POST",
-    headers: {
-      Prefer: "resolution=merge-duplicates,return=minimal",
-    },
-    body: JSON.stringify(rows),
-  });
+  const chunkSize = 250;
+  for (let index = 0; index < rows.length; index += chunkSize) {
+    const batch = rows.slice(index, index + chunkSize);
+    await supabaseRequest("/rest/v1/user_card_quantities?on_conflict=user_id,card_code", {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(batch),
+    });
+  }
 }
 
 async function deleteRemoteCollectionRows(userId, codes) {
@@ -1311,6 +1340,7 @@ async function performSupabaseSync() {
   updateSyncModalUi();
   setSyncStatus("Creating local backup...");
   createSyncBackup();
+  seedMissingLocalCollectionTimestamps(collectionMeta.lastSyncAt || nowIso());
 
   setSyncStatus("Fetching server catalogue rows...");
   const remoteRows = await fetchRemoteCollectionRows(userId);
