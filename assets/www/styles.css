@@ -1006,10 +1006,10 @@ body.zoom-active .zoom-nav {
 .zoom-card-text-info {
   position: fixed;
   left: 50%;
-  bottom: 3.3rem;
+  bottom: 4.1rem;
   transform: translateX(-50%);
   width: min(92vw, 620px);
-  max-height: min(22vh, 190px);
+  max-height: min(18vh, 150px);
   overflow: auto;
   padding: 0.65rem 0.75rem;
   border-radius: 10px;
@@ -1190,9 +1190,9 @@ body.bulk-add-active .deck-count-badge {
   }
 
   .zoom-card-text-info {
-    bottom: 2.7rem;
+    bottom: 3.8rem;
     width: min(94vw, 560px);
-    max-height: min(20vh, 150px);
+    max-height: min(15vh, 118px);
     font-size: 0.78rem;
   }
 

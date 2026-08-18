@@ -62,6 +62,7 @@ const SET_FILTER_ORDER = [
   "ECP02",
   "CSD03",
   "CP03",
+  "CP04",
   "GFB01",
   "GFD01",
   "GFD02",
@@ -237,6 +238,9 @@ const PR_PROMO_SOURCE_RULES = [
   [387, 387, "BP15 Release Tournament Champion"],
   [388, 389, "Showdown Demo Duo Tournament Participation"],
   [390, 390, "Showdown Deck Trials Participation"],
+  [391, 391, "2026 Expos Booth Visit"],
+  [392, 392, "2026 Expo Demo Session Participation"],
+  [393, 393, "2026 Expo Shadowverse: Evolve Purchase"],
   [394, 394, "BP16 Release Tournament Participation"],
   [395, 395, "BP16 Release Tournament Champion"],
   [396, 403, "Promo Series 16"],
@@ -244,16 +248,36 @@ const PR_PROMO_SOURCE_RULES = [
   [405, 421, "Bushiroad Summer Fest 2026 Trios Participation"],
   [422, 423, "Bushiroad Summer Fest 2026 Trios Top 8"],
   [424, 424, "Bushiroad Summer Fest 2026 Trios Champion"],
-  [425, 439, "Bushiroad Summer Fest 2026 Crosscraft and Free Fight Participation"],
-  [440, 440, "Bushiraod Summer Fest 2026 Gloryfinder Participation"],
+  [425, 439, "2026 Side Events Promo Pack 1 (BSF and GSD)"],
+  [440, 440, "2026 Gloryfinder (BSF and GSD)"],
   [441, 441, "Bushiroad Summer Fest 2026 Crosscraft Top 8"],
   [442, 442, "Bushiroad Summer Fest 2026 Crosscraft Champion"],
   [443, 443, "Showdown Challenges Spring 2026 Participation"],
   [444, 444, "Showdown Challenges Spring 2026 Top 8"],
   [445, 445, "Showdown Challenges Spring 2026 Champion"],
+  [446, 446, "Grand Showdown Summer-Autumn 2026 Participation"],
+  [447, 447, "Grand Showdown Summer-Autumn 2026 Top 32"],
+  [448, 448, "Grand Showdown Summer-Autumn 2026 Top 16"],
+  [449, 449, "Grand Showdown Summer-Autumn 2026 Top 8"],
+  [450, 450, "Grand Showdown Summer-Autumn 2026 Sealed Participation/Champion."],
   [451, 460, "ECP02 Box Topper"],
   [461, 461, "EX THE IDOLM@STER CINDERELLA GIRLS Release Tournament Champion"],
   [462, 467, "EX THE IDOLM@STER CINDERELLA GIRLS Release Tournament Participation"],
+  [468, 475, "Promo Series 17"],
+  [476, 476, "Shop Tournament 2026 June-July Champion/Raffle"],
+  [477, 477, "Shop Tournament 2026 June-July Participation"],
+  [478, 478, "Shop Tournament 2026 June-July Champion/Raffle"],
+  [479, 479, "Convergent Destinies Release Tournament Participation"],
+  [480, 480, "Convergent Destinies Release Tournament Champion"],
+  [481, 488, "Promo Series 18"],
+  [489, 489, "Shop Tournament 2026 August-September Champion/Raffle"],
+  [490, 490, "Preview Trials Neometropolis Participation"],
+  [491, 491, "3rd Anniversary Release Tournaments Champion"],
+  [494, 494, "Showdown Challenges 2026 Autumn Participation"],
+  [495, 495, "Showdown Challenges 2026 Autumn Top 8"],
+  [496, 496, "Showdown Challenges 2026 Autumn Champion"],
+  [501, 506, "3rd Anniversary Promo Pack"],
+  [507, 515, "Princess Connect! Re: Dive Promo Pack"],
 ];
 const STARTER_DECK_PLAYSET_LIMIT_BY_CODE = {
   "SD01-LD01EN": 1,
@@ -540,6 +564,7 @@ const SET_NAME_BY_CODE = {
   CP01: "Umamusume: Pretty Derby",
   CP02: "THE IDOLM@STER CINDERELLA GIRLS",
   CP03: "Cardfight!! Vanguard",
+  CP04: "Princess Connect! Re: Dive",
   CSD01: "Ready, Set, Umamusume!",
   CSD02: "THEIDOLM@STER CINDERELLA GIRLS Starter Decks",
   CSD02A: "Cute",
@@ -784,6 +809,7 @@ const KEYWORD_ICON_META = {
   q: { label: "Q", url: "./assets/texticons/icon_q.png" },
   quick: { label: "Quick", url: "./assets/texticons/icon_quick.png" },
   ride: { label: "Ride", url: "./assets/texticons/icon_ride.png" },
+  ub: { label: "Union Burst", url: "./assets/texticons/icon_UB.png" },
 };
 
 const TEXT_ONLY_KEYWORDS = [
@@ -856,6 +882,7 @@ let activeDeck = {
   textContent: "",
 };
 let bulkAddMode = false;
+let renderedRowCache = new Map();
 
 function prPromoSourceByCode(cardCode) {
   const normalized = normalizeCardCode(cardCode);
@@ -1732,6 +1759,36 @@ function refreshRenderedDeckStateForKey(deckKey) {
   });
 }
 
+function syncActiveDeckTextContent() {
+  const normalizedText = serializeDeckRequirements(activeDeck.requirements);
+  activeDeck.textContent = normalizedText ? `${normalizedText}\n` : "";
+}
+
+function setDeckRequirementQuantity(card, nextQuantity) {
+  const key = deckGroupKeyForCard(card);
+  const safeQuantity = Math.max(0, Math.trunc(nextQuantity));
+  const currentEntry = activeDeck.requirements.get(key);
+
+  if (safeQuantity <= 0) {
+    activeDeck.requirements.delete(key);
+    syncActiveDeckTextContent();
+    refreshBulkAddPresentation();
+    refreshRenderedDeckStateForKey(key);
+    return 0;
+  }
+
+  activeDeck.requirements.set(key, {
+    quantity: safeQuantity,
+    displayName: canonicalDeckCardName(card.name),
+    mode: deckModeForCard(card),
+    order: currentEntry?.order ?? activeDeck.requirements.size,
+  });
+  syncActiveDeckTextContent();
+  refreshBulkAddPresentation();
+  refreshRenderedDeckStateForKey(key);
+  return safeQuantity;
+}
+
 function deckFileLabel(fileName) {
   return String(fileName || "").replace(/\.txt$/i, "");
 }
@@ -2427,7 +2484,7 @@ function refreshBulkAddPresentation() {
     }
     if (deckBadge) {
       deckBadge.textContent = String(deckQty);
-      deckBadge.classList.toggle("hidden", bulkAddMode || !isDeckSelected() || deckQty <= 0);
+      deckBadge.classList.toggle("hidden", !isDeckSelected() || deckQty <= 0);
     }
   });
 }
@@ -2656,10 +2713,13 @@ function createRow(card) {
     qtyEl.textContent = String(displayedCount);
     if (deckCountBadge) {
       deckCountBadge.textContent = String(deckQty);
-      deckCountBadge.classList.toggle("hidden", bulkAddMode || !isDeckSelected() || deckQty <= 0);
+      deckCountBadge.classList.toggle("hidden", !isDeckSelected() || deckQty <= 0);
     }
     applyDeckStateToRow(tr, card);
   }
+
+  tr.__syncPresentation = syncDeckPresentation;
+  tr.__cardCode = card.code;
 
   function updateOwnedCount(delta) {
     const wasVisible = matchesActiveFilters(card);
@@ -2688,12 +2748,18 @@ function createRow(card) {
     const action = delta > 0 ? "add" : "remove";
     if (!requestDeckMutation(action, activeDeck.fileName, card)) {
       alert("Deck editing is only available in the Android app build.");
+      return;
     }
+    return setDeckRequirementQuantity(card, deckRequirementForCard(card) + delta);
   }
 
   function applyRowDelta(delta) {
-    if (bulkAddMode || !isDeckSelected()) {
+    if (!isDeckSelected()) {
       updateOwnedCount(delta);
+      return;
+    }
+    if (bulkAddMode) {
+      updateDeckCount(delta);
       return;
     }
     updateDeckCount(delta);
@@ -2711,8 +2777,24 @@ function createRow(card) {
     const deltaSteps = Math.trunc((dragStartY - clientY) / stepSize);
     const nextValue = Math.min(dragMaxValue, Math.max(0, dragAnchorValue + deltaSteps));
     if (nextValue === dragLastValue) return;
-    const previousVisibility = matchesActiveFilters(card);
-    const appliedValue = setOwnedAbsolute(nextValue, previousVisibility);
+    let appliedValue = dragLastValue;
+    if (isDeckSelected()) {
+      const delta = nextValue - dragLastValue;
+      if (delta !== 0) {
+        const action = delta > 0 ? "add" : "remove";
+        const repeats = Math.abs(delta);
+        for (let index = 0; index < repeats; index += 1) {
+          if (!requestDeckMutation(action, activeDeck.fileName, card)) {
+            alert("Deck editing is only available in the Android app build.");
+            break;
+          }
+        }
+        appliedValue = setDeckRequirementQuantity(card, nextValue);
+      }
+    } else {
+      const previousVisibility = matchesActiveFilters(card);
+      appliedValue = setOwnedAbsolute(nextValue, previousVisibility);
+    }
     const hapticCount = Math.min(Math.abs(appliedValue - dragLastValue), 4);
     dragLastValue = appliedValue;
     for (let index = 0; index < hapticCount; index += 1) {
@@ -2738,9 +2820,13 @@ function createRow(card) {
       suppressClickUntil = Date.now() + 450;
       dragPointerId = ev.pointerId;
       dragStartY = ev.clientY;
-      dragAnchorValue = ownedFor(card.code);
+      dragAnchorValue = isDeckSelected() ? deckRequirementForCard(card) : ownedFor(card.code);
       dragLastValue = dragAnchorValue;
-      dragMaxValue = dragAnchorValue >= 3 ? Number.POSITIVE_INFINITY : 3;
+      dragMaxValue = isDeckSelected()
+        ? Number.POSITIVE_INFINITY
+        : dragAnchorValue >= 3
+          ? Number.POSITIVE_INFINITY
+          : 3;
       artWrap.classList.add("bulk-add-dragging");
       artWrap.setPointerCapture?.(ev.pointerId);
     });
@@ -2765,13 +2851,24 @@ function createRow(card) {
   return tr;
 }
 
+function rowForCard(card) {
+  let row = renderedRowCache.get(card.code);
+  if (!row) {
+    row = createRow(card);
+    renderedRowCache.set(card.code, row);
+  }
+  if (typeof row.__syncPresentation === "function") {
+    row.__syncPresentation();
+  }
+  return row;
+}
+
 function renderTable() {
   closeZoom();
-  tableBody.innerHTML = "";
   const rows = filteredCards();
   const fragment = document.createDocumentFragment();
-  rows.forEach((card) => fragment.appendChild(createRow(card)));
-  tableBody.appendChild(fragment);
+  rows.forEach((card) => fragment.appendChild(rowForCard(card)));
+  tableBody.replaceChildren(fragment);
 }
 
 function syncCardCaches(newCardsForScan = []) {
@@ -3305,6 +3402,7 @@ async function loadCards() {
   const parsed = parseCsv(csvText).map((row, index) => ({ ...row, __catalogIndex: index }));
   buildFullFilterOptionState(parsed);
   cards = parsed.map((row) => cardFromCsvRow(row, stagedCardTypeMap));
+  renderedRowCache = new Map();
   pendingCardRows = [];
   ensureMissingFrontCardOverrides();
   ensureKnownDualEntries();
