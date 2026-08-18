@@ -15,6 +15,8 @@
       </div>
     </div>
     <div id="legalBackdrop" class="legal-backdrop hidden"></div>
+    <div id="accountBackdrop" class="legal-backdrop hidden"></div>
+    <div id="syncBackdrop" class="legal-backdrop hidden"></div>
     <header class="app-header">
       <div class="header-left">
         <h1><span>GG Catalogue:</span><span>Unofficial SVE Catalogue</span></h1>
@@ -29,9 +31,84 @@
             The literal and graphical information presented in this app regarding the Shadowverse Evolve trading card game, including card images and text, is copyright Cygames, Inc and Bushiroad, Inc. This app is not produced by, endorsed by, supported by, or affiliated with Cygames, Inc or Bushiroad, Inc.
           </p>
         </div>
-        <img class="header-art" src="./assets/2G.avif" alt="2G icon" />
+        <button
+          id="headerAccountBtn"
+          class="header-art-button"
+          type="button"
+          aria-label="Account"
+          title="Account"
+        >
+          <img class="header-art" src="./assets/2G.avif" alt="2G icon" />
+          <span id="headerAccountStatus" class="header-account-status" aria-hidden="true"></span>
+        </button>
       </div>
     </header>
+
+    <div
+      id="accountModal"
+      class="account-modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="accountModalTitle"
+    >
+      <h2 id="accountModalTitle">Account</h2>
+      <p id="accountModalIntro" class="account-modal-copy">
+        Sign in or create an account to link this catalogue to Supabase.
+      </p>
+      <div id="supabaseConfigPanel" class="account-config-panel hidden">
+        <p class="account-modal-copy">
+          Enter your Supabase project URL and publishable or anon key for this device.
+        </p>
+        <label class="control">
+          <span>Project URL</span>
+          <input id="supabaseUrlInput" type="text" placeholder="https://your-project-ref.supabase.co" spellcheck="false" />
+        </label>
+        <label class="control">
+          <span>Publishable / Anon Key</span>
+          <textarea id="supabaseAnonKeyInput" rows="3" placeholder="sb_publishable_... or eyJ..." spellcheck="false"></textarea>
+        </label>
+      </div>
+      <div id="accountSignedOutPanel">
+        <label class="control">
+          <span>Email</span>
+          <input id="accountEmailInput" type="email" placeholder="you@example.com" autocomplete="email" />
+        </label>
+        <label class="control">
+          <span>Password</span>
+          <input id="accountPasswordInput" type="password" placeholder="Password" autocomplete="current-password" />
+        </label>
+        <div class="account-modal-actions">
+          <button id="accountCancelBtn" type="button">Cancel</button>
+          <button id="accountSignUpBtn" type="button">Create Account</button>
+          <button id="accountSignInBtn" type="button">Sign In</button>
+        </div>
+      </div>
+      <div id="accountSignedInPanel" class="hidden">
+        <p id="accountSignedInText" class="account-modal-copy"></p>
+        <div class="account-modal-actions">
+          <button id="accountCloseBtn" type="button">Close</button>
+          <button id="accountLogoutBtn" type="button">Log Out</button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="syncModal"
+      class="account-modal sync-modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="syncModalTitle"
+    >
+      <h2 id="syncModalTitle">Sync</h2>
+      <p id="syncModalStatus" class="account-modal-copy">
+        Sync will back up the local catalogue first, then compare local rows to Supabase by updated time.
+      </p>
+      <div class="account-modal-actions sync-modal-actions">
+        <button id="syncCancelBtn" type="button">Close</button>
+        <button id="syncRevertBtn" type="button">Revert Local Changes</button>
+        <button id="syncNowBtn" type="button">Sync</button>
+      </div>
+    </div>
 
     <section id="searchSidebarShell" class="sidebar-shell">
       <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle search sidebar">&#128269;</button>

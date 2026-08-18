@@ -3,6 +3,12 @@ const CARD_TYPE_URL = "./data/shadowverse-cardtype-cache.json";
 const EMBEDDED_CSV_DATA = typeof window !== "undefined" ? window.SVE_CSV_DATA : null;
 const EMBEDDED_CARDTYPE_DATA = typeof window !== "undefined" ? window.SVE_CARDTYPE_DATA : null;
 const STORAGE_KEY = "sve_collection_v1";
+const STORAGE_META_KEY = "sve_collection_meta_v1";
+const STORAGE_BACKUP_KEY = "sve_collection_backup_v1";
+const STORAGE_SUPABASE_CONFIG_KEY = "sve_supabase_config_v1";
+const STORAGE_SUPABASE_SESSION_KEY = "sve_supabase_session_v1";
+const DEFAULT_SUPABASE_URL = "https://whaehwntjhmdygwnjlii.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_8VYCDO_LP8Ly_Refmg67vg_cp4r1DM2";
 const CARD_ART_ROOT = "./assets/cards";
 const PROMO_MERGED_SET_CODES = new Set(["PR", "BSF2024", "BSF2025", "NY2024"]);
 const PROMO_FRONT_ORDER = { BSF2024: 0, BSF2025: 1, NY2024: 2 };
@@ -750,6 +756,30 @@ const deckPasteModal = document.getElementById("deckPasteModal");
 const deckPasteInput = document.getElementById("deckPasteInput");
 const deckPasteCancelBtn = document.getElementById("deckPasteCancelBtn");
 const deckPasteConfirmBtn = document.getElementById("deckPasteConfirmBtn");
+const accountBackdrop = document.getElementById("accountBackdrop");
+const syncBackdrop = document.getElementById("syncBackdrop");
+const headerAccountBtn = document.getElementById("headerAccountBtn");
+const headerAccountStatus = document.getElementById("headerAccountStatus");
+const accountModal = document.getElementById("accountModal");
+const accountModalIntro = document.getElementById("accountModalIntro");
+const supabaseConfigPanel = document.getElementById("supabaseConfigPanel");
+const supabaseUrlInput = document.getElementById("supabaseUrlInput");
+const supabaseAnonKeyInput = document.getElementById("supabaseAnonKeyInput");
+const accountSignedOutPanel = document.getElementById("accountSignedOutPanel");
+const accountSignedInPanel = document.getElementById("accountSignedInPanel");
+const accountSignedInText = document.getElementById("accountSignedInText");
+const accountEmailInput = document.getElementById("accountEmailInput");
+const accountPasswordInput = document.getElementById("accountPasswordInput");
+const accountCancelBtn = document.getElementById("accountCancelBtn");
+const accountCloseBtn = document.getElementById("accountCloseBtn");
+const accountSignInBtn = document.getElementById("accountSignInBtn");
+const accountSignUpBtn = document.getElementById("accountSignUpBtn");
+const accountLogoutBtn = document.getElementById("accountLogoutBtn");
+const syncModal = document.getElementById("syncModal");
+const syncModalStatus = document.getElementById("syncModalStatus");
+const syncCancelBtn = document.getElementById("syncCancelBtn");
+const syncRevertBtn = document.getElementById("syncRevertBtn");
+const syncNowBtn = document.getElementById("syncNowBtn");
 const tableBody = document.getElementById("cardsTableBody");
 const rowTemplate = document.getElementById("rowTemplate");
 const startupSplash = document.getElementById("startupSplash");
@@ -842,6 +872,12 @@ const TEXT_ONLY_KEYWORDS = [
 let cards = [];
 let cardByCode = new Map();
 let collection = {};
+let collectionMeta = {
+  rowUpdatedAt: {},
+  lastSyncAt: "",
+  syncedUserId: "",
+};
+let collectionBackup = null;
 let zoomState = { cards: [], index: -1, anchorEl: null, anchorCode: "" };
 let zoomNavLeft = null;
 let zoomNavRight = null;
@@ -883,6 +919,564 @@ let activeDeck = {
 };
 let bulkAddMode = false;
 let renderedRowCache = new Map();
+let supabaseConfig = {
+  url: "",
+  anonKey: "",
+};
+let supabaseSession = null;
+let accountLongPressHandle = null;
+let accountLongPressFired = false;
+let syncInFlight = false;
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function isRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function sanitizeCollectionObject(value) {
+  if (!isRecord(value)) return {};
+  const out = {};
+  Object.entries(value).forEach(([code, qty]) => {
+    const next = Math.max(0, Math.trunc(Number.parseInt(String(qty ?? 0), 10) || 0));
+    out[code] = next;
+  });
+  return out;
+}
+
+function sanitizeRowUpdatedAt(value) {
+  if (!isRecord(value)) return {};
+  const out = {};
+  Object.entries(value).forEach(([code, updatedAt]) => {
+    const next = String(updatedAt || "").trim();
+    if (next) out[code] = next;
+  });
+  return out;
+}
+
+function saveCollectionMeta() {
+  localStorage.setItem(STORAGE_META_KEY, JSON.stringify(collectionMeta));
+}
+
+function persistCollectionState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
+  saveCollectionMeta();
+}
+
+function replaceCollectionState(nextCollection, nextRowUpdatedAt, options = {}) {
+  collection = sanitizeCollectionObject(nextCollection);
+  collectionMeta.rowUpdatedAt = sanitizeRowUpdatedAt(nextRowUpdatedAt);
+  if (Object.hasOwn(options, "lastSyncAt")) {
+    collectionMeta.lastSyncAt = String(options.lastSyncAt || "");
+  }
+  if (Object.hasOwn(options, "syncedUserId")) {
+    collectionMeta.syncedUserId = String(options.syncedUserId || "");
+  }
+  persistCollectionState();
+}
+
+function trackedCollectionCodes() {
+  return [...new Set([...Object.keys(collection), ...Object.keys(collectionMeta.rowUpdatedAt || {})])];
+}
+
+function supabaseConfigured() {
+  return Boolean(supabaseConfig.url && supabaseConfig.anonKey);
+}
+
+function authUser() {
+  return supabaseSession?.user || null;
+}
+
+function authUserId() {
+  return authUser()?.id || "";
+}
+
+function normalizeSupabaseUrl(url) {
+  return String(url || "")
+    .trim()
+    .replace(/\/+(rest|auth)\/v1\/?$/i, "")
+    .replace(/\/+$/g, "");
+}
+
+function saveSupabaseConfig() {
+  localStorage.setItem(STORAGE_SUPABASE_CONFIG_KEY, JSON.stringify(supabaseConfig));
+}
+
+function loadSupabaseConfig() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_SUPABASE_CONFIG_KEY) || "{}");
+    supabaseConfig = {
+      url: normalizeSupabaseUrl(parsed.url || DEFAULT_SUPABASE_URL),
+      anonKey: String(parsed.anonKey || DEFAULT_SUPABASE_ANON_KEY).trim(),
+    };
+  } catch {
+    supabaseConfig = { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
+  }
+}
+
+function saveSupabaseSession() {
+  if (!supabaseSession) {
+    localStorage.removeItem(STORAGE_SUPABASE_SESSION_KEY);
+    return;
+  }
+  localStorage.setItem(STORAGE_SUPABASE_SESSION_KEY, JSON.stringify(supabaseSession));
+}
+
+function loadSupabaseSession() {
+  try {
+    supabaseSession = JSON.parse(localStorage.getItem(STORAGE_SUPABASE_SESSION_KEY) || "null");
+  } catch {
+    supabaseSession = null;
+  }
+}
+
+function clearSupabaseSession() {
+  supabaseSession = null;
+  saveSupabaseSession();
+}
+
+function sessionExpiresSoon() {
+  const expiresAt = Number.parseInt(String(supabaseSession?.expires_at ?? 0), 10);
+  if (!expiresAt) return true;
+  return Date.now() >= (expiresAt * 1000) - 60000;
+}
+
+function setSyncStatus(message) {
+  if (syncModalStatus) syncModalStatus.textContent = message;
+}
+
+function updateHeaderAccountUi() {
+  if (!headerAccountBtn) return;
+  const signedIn = Boolean(authUser());
+  headerAccountBtn.classList.toggle("is-signed-in", signedIn);
+  headerAccountBtn.classList.toggle("is-config-missing", !supabaseConfigured());
+  headerAccountBtn.title = signedIn
+    ? `Signed in as ${authUser()?.email || "account"}`
+    : supabaseConfigured()
+      ? "Sign in or create account"
+      : "Configure Supabase account access";
+  headerAccountBtn.setAttribute("aria-label", signedIn ? "Account, signed in" : "Account");
+  if (headerAccountStatus) {
+    headerAccountStatus.title = signedIn ? "Signed in" : supabaseConfigured() ? "Signed out" : "Supabase not configured";
+  }
+}
+
+function updateAccountModalUi() {
+  if (!accountModal) return;
+  const signedIn = Boolean(authUser());
+  const configMissing = !supabaseConfigured();
+  if (supabaseConfigPanel) supabaseConfigPanel.classList.toggle("hidden", signedIn);
+  if (accountSignedOutPanel) accountSignedOutPanel.classList.toggle("hidden", signedIn);
+  if (accountSignedInPanel) accountSignedInPanel.classList.toggle("hidden", !signedIn);
+  if (accountModalIntro) {
+    accountModalIntro.textContent = configMissing
+      ? "Configure Supabase for this device, then sign in or create an account."
+      : signedIn
+        ? "Your catalogue is currently linked to the signed-in account on this device."
+        : "Sign in or create an account to link this catalogue to Supabase.";
+  }
+  if (supabaseUrlInput) supabaseUrlInput.value = supabaseConfig.url || "";
+  if (supabaseAnonKeyInput) supabaseAnonKeyInput.value = supabaseConfig.anonKey || "";
+  if (accountSignedInText) {
+    accountSignedInText.textContent = authUser()?.email
+      ? `Signed in as ${authUser().email}.`
+      : "Signed in.";
+  }
+  updateHeaderAccountUi();
+}
+
+function updateSyncModalUi() {
+  const signedIn = Boolean(authUser());
+  const backupAvailable = Boolean(collectionBackup && isRecord(collectionBackup.collection));
+  if (syncNowBtn) syncNowBtn.disabled = syncInFlight || !signedIn || !supabaseConfigured();
+  if (syncRevertBtn) syncRevertBtn.disabled = syncInFlight || !backupAvailable;
+  if (!signedIn) {
+    setSyncStatus(
+      supabaseConfigured()
+        ? "Sign in first, then use Sync to back up local data and reconcile catalogue rows with Supabase."
+        : "Configure Supabase and sign in first. Sync always creates a local backup before it runs."
+    );
+  }
+}
+
+function saveCollectionBackup() {
+  if (!collectionBackup) {
+    localStorage.removeItem(STORAGE_BACKUP_KEY);
+    return;
+  }
+  localStorage.setItem(STORAGE_BACKUP_KEY, JSON.stringify(collectionBackup));
+}
+
+function loadCollectionBackup() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_BACKUP_KEY) || "null");
+    collectionBackup = parsed && isRecord(parsed.collection) ? parsed : null;
+  } catch {
+    collectionBackup = null;
+  }
+}
+
+function createSyncBackup() {
+  collectionBackup = {
+    createdAt: nowIso(),
+    collection: sanitizeCollectionObject(collection),
+    meta: {
+      rowUpdatedAt: sanitizeRowUpdatedAt(collectionMeta.rowUpdatedAt),
+      lastSyncAt: String(collectionMeta.lastSyncAt || ""),
+      syncedUserId: String(collectionMeta.syncedUserId || ""),
+    },
+  };
+  saveCollectionBackup();
+  updateSyncModalUi();
+}
+
+function restoreCollectionBackup() {
+  if (!collectionBackup) return false;
+  replaceCollectionState(
+    collectionBackup.collection,
+    collectionBackup.meta?.rowUpdatedAt || {},
+    {
+      lastSyncAt: collectionBackup.meta?.lastSyncAt || "",
+      syncedUserId: collectionBackup.meta?.syncedUserId || "",
+    }
+  );
+  renderTable();
+  return true;
+}
+
+async function supabaseRequest(path, init = {}, options = {}) {
+  if (!supabaseConfigured()) {
+    throw new Error("Supabase is not configured on this device.");
+  }
+  const headers = new Headers(init.headers || {});
+  headers.set("apikey", supabaseConfig.anonKey);
+  if (options.auth !== false && supabaseSession?.access_token) {
+    headers.set("Authorization", `Bearer ${supabaseSession.access_token}`);
+  }
+  if (!headers.has("Content-Type") && init.body != null) {
+    headers.set("Content-Type", "application/json");
+  }
+  const response = await fetch(`${supabaseConfig.url}${path}`, { ...init, headers });
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(message || `Supabase request failed (${response.status})`);
+  }
+  if (response.status === 204) return null;
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function refreshSupabaseSession() {
+  if (!supabaseSession?.refresh_token) return false;
+  const data = await supabaseRequest("/auth/v1/token?grant_type=refresh_token", {
+    method: "POST",
+    body: JSON.stringify({ refresh_token: supabaseSession.refresh_token }),
+  }, { auth: false });
+  if (!data?.access_token) return false;
+  supabaseSession = data;
+  saveSupabaseSession();
+  updateAccountModalUi();
+  updateSyncModalUi();
+  return true;
+}
+
+async function ensureSupabaseSession() {
+  if (!supabaseSession) return false;
+  if (!sessionExpiresSoon()) return true;
+  try {
+    return await refreshSupabaseSession();
+  } catch {
+    clearSupabaseSession();
+    updateAccountModalUi();
+    updateSyncModalUi();
+    return false;
+  }
+}
+
+async function signInWithSupabase(email, password) {
+  const data = await supabaseRequest("/auth/v1/token?grant_type=password", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  }, { auth: false });
+  supabaseSession = data;
+  saveSupabaseSession();
+  updateAccountModalUi();
+  updateSyncModalUi();
+}
+
+async function signUpWithSupabase(email, password) {
+  const data = await supabaseRequest("/auth/v1/signup", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  }, { auth: false });
+  if (data?.session) {
+    supabaseSession = data.session;
+    saveSupabaseSession();
+  }
+  updateAccountModalUi();
+  updateSyncModalUi();
+  return data;
+}
+
+async function signOutOfSupabase() {
+  if (supabaseSession?.access_token) {
+    try {
+      await supabaseRequest("/auth/v1/logout", { method: "POST" });
+    } catch {
+      // Ignore logout network failures and clear local session regardless.
+    }
+  }
+  clearSupabaseSession();
+  updateAccountModalUi();
+  updateSyncModalUi();
+}
+
+function collectionRowsForSync() {
+  return trackedCollectionCodes().map((code) => ({
+    code,
+    quantity: ownedFor(code),
+    updatedAt: String(collectionMeta.rowUpdatedAt?.[code] || ""),
+    tracked: Object.hasOwn(collection, code) || Object.hasOwn(collectionMeta.rowUpdatedAt || {}, code),
+  }));
+}
+
+function applyRemoteCollectionRows(rows, userId) {
+  const nextCollection = {};
+  const nextRowUpdatedAt = {};
+  rows.forEach((row) => {
+    const code = String(row.card_code || "");
+    const qty = Math.max(0, Math.trunc(Number.parseInt(String(row.owned_count ?? 0), 10) || 0));
+    if (!code || qty <= 0) return;
+    nextCollection[code] = qty;
+    nextRowUpdatedAt[code] = String(row.updated_at || "");
+  });
+  replaceCollectionState(nextCollection, nextRowUpdatedAt, {
+    lastSyncAt: nowIso(),
+    syncedUserId: userId,
+  });
+}
+
+async function fetchRemoteCollectionRows(userId) {
+  const query = `/rest/v1/user_card_quantities?select=card_code,owned_count,updated_at&user_id=eq.${encodeURIComponent(userId)}`;
+  const rows = await supabaseRequest(query, { method: "GET" });
+  return Array.isArray(rows) ? rows : [];
+}
+
+async function upsertRemoteCollectionRows(rows) {
+  if (!rows.length) return;
+  await supabaseRequest("/rest/v1/user_card_quantities?on_conflict=user_id,card_code", {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify(rows),
+  });
+}
+
+async function deleteRemoteCollectionRows(userId, codes) {
+  if (!codes.length) return;
+  const chunkSize = 100;
+  for (let index = 0; index < codes.length; index += chunkSize) {
+    const batch = codes.slice(index, index + chunkSize);
+    const inList = batch.map((code) => `"${String(code).replace(/"/g, '\\"')}"`).join(",");
+    await supabaseRequest(
+      `/rest/v1/user_card_quantities?user_id=eq.${encodeURIComponent(userId)}&card_code=in.(${encodeURIComponent(inList)})`,
+      {
+        method: "DELETE",
+        headers: {
+          Prefer: "return=minimal",
+        },
+      }
+    );
+  }
+}
+
+async function performSupabaseSync() {
+  if (syncInFlight) return;
+  if (!supabaseConfigured()) {
+    openAccountModal();
+    throw new Error("Configure Supabase for this device before syncing.");
+  }
+  const hasSession = await ensureSupabaseSession();
+  if (!hasSession) {
+    openAccountModal();
+    throw new Error("Sign in before syncing.");
+  }
+  const userId = authUserId();
+  if (!userId) throw new Error("Supabase session is missing a user id.");
+
+  syncInFlight = true;
+  updateSyncModalUi();
+  setSyncStatus("Creating local backup...");
+  createSyncBackup();
+
+  setSyncStatus("Fetching server catalogue rows...");
+  const remoteRows = await fetchRemoteCollectionRows(userId);
+  const remoteMap = new Map(
+    remoteRows.map((row) => [
+      String(row.card_code || ""),
+      {
+        quantity: Math.max(0, Math.trunc(Number.parseInt(String(row.owned_count ?? 0), 10) || 0)),
+        updatedAt: String(row.updated_at || ""),
+      },
+    ])
+  );
+  const localRows = collectionRowsForSync();
+  const localMap = new Map(localRows.map((row) => [row.code, row]));
+  const allCodes = new Set([...remoteMap.keys(), ...localMap.keys()]);
+  const firstSync = !collectionMeta.lastSyncAt || collectionMeta.syncedUserId !== userId;
+  const rowsToUpsert = [];
+  const codesToDelete = [];
+
+  allCodes.forEach((code) => {
+    const local = localMap.get(code) || { quantity: 0, updatedAt: "", tracked: false };
+    const remote = remoteMap.get(code) || null;
+    const hasLocal = local.tracked;
+    const hasRemote = Boolean(remote);
+
+    if (!hasLocal && !hasRemote) return;
+
+    let winner = "remote";
+    if (firstSync) {
+      if (hasLocal && !hasRemote) {
+        winner = "local";
+      } else if (!hasLocal && hasRemote) {
+        winner = "remote";
+      } else if (local.updatedAt && remote?.updatedAt) {
+        winner = local.updatedAt > remote.updatedAt ? "local" : "remote";
+      } else if (local.updatedAt && !remote?.updatedAt) {
+        winner = "local";
+      } else if (!local.updatedAt && remote?.updatedAt) {
+        winner = "remote";
+      } else if (local.quantity > 0 && remote && remote.quantity <= 0) {
+        winner = "local";
+      } else if (local.quantity > 0 && !hasRemote) {
+        winner = "local";
+      } else {
+        winner = "remote";
+      }
+    } else if (hasLocal && !hasRemote) {
+      winner = "local";
+    } else if (!hasLocal && hasRemote) {
+      winner = "remote";
+    } else if (local.updatedAt && remote?.updatedAt) {
+      winner = local.updatedAt > remote.updatedAt ? "local" : "remote";
+    } else if (local.updatedAt && !remote?.updatedAt) {
+      winner = "local";
+    } else if (!local.updatedAt && remote?.updatedAt) {
+      winner = "remote";
+    } else if (local.quantity !== (remote?.quantity || 0)) {
+      winner = "local";
+    }
+
+    if (winner === "local") {
+      if (local.quantity > 0) {
+        if (!remote || remote.quantity !== local.quantity) {
+          rowsToUpsert.push({
+            user_id: userId,
+            card_code: code,
+            owned_count: local.quantity,
+          });
+        }
+      } else if (remote) {
+        codesToDelete.push(code);
+      }
+    }
+  });
+
+  if (rowsToUpsert.length || codesToDelete.length) {
+    setSyncStatus("Applying local changes to Supabase...");
+    await upsertRemoteCollectionRows(rowsToUpsert);
+    await deleteRemoteCollectionRows(userId, codesToDelete);
+  }
+
+  setSyncStatus("Refreshing catalogue from Supabase...");
+  const finalRemoteRows = await fetchRemoteCollectionRows(userId);
+  applyRemoteCollectionRows(finalRemoteRows, userId);
+  renderTable();
+  setSyncStatus(
+    `Sync complete. Pulled ${finalRemoteRows.length} tracked card rows from Supabase.`
+  );
+  syncInFlight = false;
+  updateSyncModalUi();
+}
+
+function closeAccountModal() {
+  if (!accountModal || !accountBackdrop) return;
+  accountModal.classList.add("hidden");
+  accountBackdrop.classList.add("hidden");
+}
+
+function openAccountModal() {
+  if (!accountModal || !accountBackdrop) return;
+  updateAccountModalUi();
+  accountModal.classList.remove("hidden");
+  accountBackdrop.classList.remove("hidden");
+}
+
+function closeSyncModal() {
+  if (!syncModal || !syncBackdrop) return;
+  syncModal.classList.add("hidden");
+  syncBackdrop.classList.add("hidden");
+}
+
+function openSyncModal() {
+  if (!syncModal || !syncBackdrop) return;
+  updateSyncModalUi();
+  syncModal.classList.remove("hidden");
+  syncBackdrop.classList.remove("hidden");
+}
+
+function storeSupabaseConfigFromInputs() {
+  if (!supabaseUrlInput || !supabaseAnonKeyInput) return;
+  supabaseConfig = {
+    url: normalizeSupabaseUrl(supabaseUrlInput.value),
+    anonKey: String(supabaseAnonKeyInput.value || "").trim(),
+  };
+  saveSupabaseConfig();
+  updateAccountModalUi();
+  updateSyncModalUi();
+}
+
+async function handleAccountSignIn() {
+  storeSupabaseConfigFromInputs();
+  if (!supabaseConfigured()) {
+    alert("Enter the Supabase project URL and publishable or anon key first.");
+    return;
+  }
+  const email = String(accountEmailInput?.value || "").trim();
+  const password = String(accountPasswordInput?.value || "");
+  if (!email || !password) {
+    alert("Enter your email and password.");
+    return;
+  }
+  await signInWithSupabase(email, password);
+  closeAccountModal();
+  alert(`Signed in as ${email}.`);
+}
+
+async function handleAccountSignUp() {
+  storeSupabaseConfigFromInputs();
+  if (!supabaseConfigured()) {
+    alert("Enter the Supabase project URL and publishable or anon key first.");
+    return;
+  }
+  const email = String(accountEmailInput?.value || "").trim();
+  const password = String(accountPasswordInput?.value || "");
+  if (!email || !password) {
+    alert("Enter your email and password.");
+    return;
+  }
+  const result = await signUpWithSupabase(email, password);
+  closeAccountModal();
+  if (result?.session) {
+    alert(`Account created and signed in as ${email}.`);
+    return;
+  }
+  alert(`Account created for ${email}. Confirm the email if your Supabase auth settings require it, then sign in.`);
+}
 
 function prPromoSourceByCode(cardCode) {
   const normalized = normalizeCardCode(cardCode);
@@ -1224,8 +1818,16 @@ function importCollectionFromText(jsonText) {
   if (!parsed || typeof parsed !== "object" || typeof parsed.data !== "object") {
     throw new Error("Invalid format");
   }
-  collection = parsed.data;
-  saveCollection();
+  const importedAt = nowIso();
+  const importedCollection = sanitizeCollectionObject(parsed.data);
+  const importedMeta = {};
+  Object.keys(importedCollection).forEach((code) => {
+    importedMeta[code] = importedAt;
+  });
+  replaceCollectionState(importedCollection, importedMeta, {
+    lastSyncAt: "",
+    syncedUserId: "",
+  });
   renderTable();
 }
 
@@ -2033,14 +2635,28 @@ function requestDeckImport(fileName) {
 }
 
 function saveCollection() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
+  persistCollectionState();
 }
 
 function loadCollection() {
   try {
-    collection = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    collection = sanitizeCollectionObject(JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"));
   } catch {
     collection = {};
+  }
+  try {
+    const parsedMeta = JSON.parse(localStorage.getItem(STORAGE_META_KEY) || "{}");
+    collectionMeta = {
+      rowUpdatedAt: sanitizeRowUpdatedAt(parsedMeta.rowUpdatedAt),
+      lastSyncAt: String(parsedMeta.lastSyncAt || ""),
+      syncedUserId: String(parsedMeta.syncedUserId || ""),
+    };
+  } catch {
+    collectionMeta = {
+      rowUpdatedAt: {},
+      lastSyncAt: "",
+      syncedUserId: "",
+    };
   }
 }
 
@@ -2050,9 +2666,10 @@ function ownedFor(code) {
   return Math.max(0, value);
 }
 
-function setOwned(code, value) {
+function setOwned(code, value, updatedAt = nowIso()) {
   const next = Math.max(0, Math.trunc(value));
   collection[code] = next;
+  collectionMeta.rowUpdatedAt[code] = String(updatedAt || nowIso());
   saveCollection();
 }
 
@@ -3489,6 +4106,99 @@ function bindEvents() {
       setBulkAddMode(!bulkAddMode);
     });
   }
+  if (headerAccountBtn) {
+    headerAccountBtn.addEventListener("pointerdown", () => {
+      accountLongPressFired = false;
+      window.clearTimeout(accountLongPressHandle);
+      accountLongPressHandle = window.setTimeout(() => {
+        accountLongPressFired = true;
+        openSyncModal();
+      }, 550);
+    });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((eventName) => {
+      headerAccountBtn.addEventListener(eventName, () => {
+        window.clearTimeout(accountLongPressHandle);
+      });
+    });
+    headerAccountBtn.addEventListener("click", () => {
+      if (accountLongPressFired) {
+        accountLongPressFired = false;
+        return;
+      }
+      openAccountModal();
+    });
+  }
+  if (accountBackdrop) {
+    accountBackdrop.addEventListener("click", closeAccountModal);
+  }
+  if (syncBackdrop) {
+    syncBackdrop.addEventListener("click", closeSyncModal);
+  }
+  if (accountCancelBtn) {
+    accountCancelBtn.addEventListener("click", closeAccountModal);
+  }
+  if (accountCloseBtn) {
+    accountCloseBtn.addEventListener("click", closeAccountModal);
+  }
+  if (accountSignInBtn) {
+    accountSignInBtn.addEventListener("click", async () => {
+      try {
+        await handleAccountSignIn();
+      } catch (err) {
+        alert(String(err.message || err));
+      }
+    });
+  }
+  if (accountSignUpBtn) {
+    accountSignUpBtn.addEventListener("click", async () => {
+      try {
+        await handleAccountSignUp();
+      } catch (err) {
+        alert(String(err.message || err));
+      }
+    });
+  }
+  if (accountLogoutBtn) {
+    accountLogoutBtn.addEventListener("click", async () => {
+      const confirmed = window.confirm("Log out of this device?");
+      if (!confirmed) return;
+      await signOutOfSupabase();
+      closeAccountModal();
+      alert("Logged out.");
+    });
+  }
+  if (syncCancelBtn) {
+    syncCancelBtn.addEventListener("click", closeSyncModal);
+  }
+  if (syncNowBtn) {
+    syncNowBtn.addEventListener("click", async () => {
+      try {
+        await performSupabaseSync();
+      } catch (err) {
+        setSyncStatus(String(err.message || err));
+        alert(String(err.message || err));
+      } finally {
+        syncInFlight = false;
+        updateSyncModalUi();
+      }
+    });
+  }
+  if (syncRevertBtn) {
+    syncRevertBtn.addEventListener("click", () => {
+      if (!collectionBackup) {
+        alert("No local sync backup is available yet.");
+        return;
+      }
+      const confirmed = window.confirm(
+        "Restore the last pre-sync local backup? This will replace current local catalogue data only."
+      );
+      if (!confirmed) return;
+      if (restoreCollectionBackup()) {
+        closeSyncModal();
+        alert("Local catalogue restored from the last backup.");
+      }
+    });
+  }
   document.addEventListener("click", (ev) => {
     if (!keywordFilterMenu || !keywordFilterButton) return;
     if (keywordFilterMenu.classList.contains("hidden")) return;
@@ -3606,6 +4316,10 @@ function bindEvents() {
 
 async function start() {
   loadCollection();
+  loadCollectionBackup();
+  loadSupabaseConfig();
+  loadSupabaseSession();
+  await ensureSupabaseSession();
   createZoomNav();
   createZoomPromoInfo();
   createZoomOwnedInfo();
@@ -3622,6 +4336,8 @@ async function start() {
   updateActionsSidebarState();
   updateDeckModeUi();
   updateBulkAddUi();
+  updateAccountModalUi();
+  updateSyncModalUi();
   registerServiceWorker();
   try {
     await loadCards();

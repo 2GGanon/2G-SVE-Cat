@@ -174,12 +174,105 @@ body.startup-ready .startup-splash {
   display: none;
 }
 
+.header-art-button {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  line-height: 0;
+  border-radius: 16px;
+}
+
+.header-art-button:active {
+  transform: translateY(1px) scale(0.98);
+  filter: none;
+}
+
+.header-account-status {
+  position: absolute;
+  right: 0.15rem;
+  bottom: 0.5rem;
+  width: 0.82rem;
+  height: 0.82rem;
+  border-radius: 999px;
+  background: #7a8ba6;
+  border: 2px solid rgba(10, 18, 36, 0.95);
+  box-shadow: 0 0 0 1px rgba(157, 178, 220, 0.28);
+}
+
+.header-art-button.is-signed-in .header-account-status {
+  background: #43c56b;
+}
+
+.header-art-button.is-config-missing .header-account-status {
+  background: #d59d47;
+}
+
 .header-art {
   width: 78px;
   height: 78px;
   object-fit: contain;
   flex: 0 0 auto;
   margin-top: -0.2rem;
+  display: block;
+}
+
+.account-modal {
+  position: fixed;
+  top: 5rem;
+  right: 1rem;
+  z-index: 1202;
+  width: min(25rem, calc(100vw - 2rem));
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(10, 18, 36, 0.98);
+  box-shadow: 0 20px 42px rgba(0, 0, 0, 0.42);
+  display: grid;
+  gap: 0.7rem;
+}
+
+.account-modal h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #f2f6ff;
+}
+
+.account-modal-copy {
+  margin: 0;
+  color: #d7e3ff;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.account-config-panel {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.55rem;
+  border: 1px solid rgba(140, 166, 223, 0.22);
+  border-radius: 12px;
+  background: rgba(15, 27, 52, 0.74);
+}
+
+.account-config-panel textarea {
+  resize: vertical;
+  min-height: 4.2rem;
+}
+
+.account-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.sync-modal {
+  width: min(24rem, calc(100vw - 2rem));
+}
+
+.sync-modal-actions {
+  justify-content: space-between;
 }
 
 .layout {
@@ -1131,6 +1224,12 @@ body.bulk-add-active .deck-count-badge {
   .header-art {
     width: 68px;
     height: 68px;
+  }
+
+  .account-modal {
+    top: 4.65rem;
+    right: 0.6rem;
+    width: min(25rem, calc(100vw - 1.2rem));
   }
 
   .hero-cards {
