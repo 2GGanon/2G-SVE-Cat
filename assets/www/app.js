@@ -1067,7 +1067,7 @@ function updateAccountModalUi() {
   if (!accountModal) return;
   const signedIn = Boolean(authUser());
   const configMissing = !supabaseConfigured();
-  if (supabaseConfigPanel) supabaseConfigPanel.classList.toggle("hidden", signedIn);
+  if (supabaseConfigPanel) supabaseConfigPanel.classList.add("hidden");
   if (accountSignedOutPanel) accountSignedOutPanel.classList.toggle("hidden", signedIn);
   if (accountSignedInPanel) accountSignedInPanel.classList.toggle("hidden", !signedIn);
   if (accountModalIntro) {
@@ -1460,7 +1460,7 @@ async function handleAccountSignIn() {
 async function handleAccountSignUp() {
   storeSupabaseConfigFromInputs();
   if (!supabaseConfigured()) {
-    alert("Enter the Supabase project URL and publishable or anon key first.");
+    alert("Supabase is not configured on this device.");
     return;
   }
   const email = String(accountEmailInput?.value || "").trim();
@@ -1475,7 +1475,9 @@ async function handleAccountSignUp() {
     alert(`Account created and signed in as ${email}.`);
     return;
   }
-  alert(`Account created for ${email}. Confirm the email if your Supabase auth settings require it, then sign in.`);
+  alert(
+    `Account created for ${email}, but Supabase email confirmation is still enabled. Disable email confirmation in your Supabase Auth settings, then try again.`
+  );
 }
 
 function prPromoSourceByCode(cardCode) {
