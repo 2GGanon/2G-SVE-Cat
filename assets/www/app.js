@@ -58,8 +58,11 @@ const SET_FILTER_ORDER = [
   "BP16",
   "BP17",
   "BP18",
+  "BP19",
+  "BP20",
   "SP01",
   "PR",
+  "REPRINTS",
   "CSD01",
   "CP01",
   "ECP01",
@@ -561,6 +564,8 @@ const SET_NAME_BY_CODE = {
   BP16: "New World Genesis",
   BP17: "Convergent Destinies",
   BP18: "Neometropolis",
+  BP19: "Eightfold Retribution",
+  BP20: "Omens & Heirs",
   SDD01: "Showdown Deck: Forestcraft",
   SDD02: "Showdown Deck: Swordcraft",
   SDD03: "Showdown Deck: Runecraft",
@@ -602,6 +607,7 @@ const SET_NAME_BY_CODE = {
   SS01: "Worlds Beyond Swordcraft Starter Set",
   SS02: "Worlds Beyond Dragoncraft Starter Set",
   PR: "Promo Cards",
+  REPRINTS: "Reprints",
   BSF2024: "Bushiroad Spring Fest 2024 Promo",
   BSF2025: "Bushiroad Spring Fest 2025 Promo",
   NY2024: "New Year 2024 Promo",
@@ -642,6 +648,10 @@ function canonicalSetCode(rawSetCode) {
   if (/^SDD0[1-6]$/.test(normalized)) return "SDD";
   if (/^SS0[12]$/.test(normalized)) return "SS";
   return PROMO_MERGED_SET_CODES.has(normalized) ? "PR" : String(rawSetCode || "");
+}
+
+function isReprintCardCode(cardCode) {
+  return /-[Rr]\d/.test(normalizeCardCode(cardCode));
 }
 
 function promoOrderIndex(cardCode) {
@@ -781,6 +791,7 @@ const syncCancelBtn = document.getElementById("syncCancelBtn");
 const syncRevertBtn = document.getElementById("syncRevertBtn");
 const syncNowBtn = document.getElementById("syncNowBtn");
 const tableBody = document.getElementById("cardsTableBody");
+const tableWrap = document.querySelector(".table-wrap");
 const rowTemplate = document.getElementById("rowTemplate");
 const startupSplash = document.getElementById("startupSplash");
 const legalToggle = document.getElementById("legalToggle");
@@ -793,6 +804,7 @@ const actionsToggle = document.getElementById("actionsToggle");
 
 const RARITY_LABEL_BY_PREFIX = {
   "": "Base",
+  R: "Base",
   P: "Premium",
   SL: "Super Legendary",
   U: "Ultimate",
@@ -1522,13 +1534,14 @@ function prPromoSourceByCode(cardCode) {
 
 function updateZoomPromoInfo(card) {
   if (!zoomPromoInfo) return;
-  const source = prPromoSourceByCode(card?.code || "") || String(card?.promoSource || "").trim();
+  const reprintSource = String(card?.reprintSource || "").trim();
+  const source = reprintSource || prPromoSourceByCode(card?.code || "") || String(card?.promoSource || "").trim();
   if (!source) {
     zoomPromoInfo.classList.add("hidden");
     zoomPromoInfo.textContent = "";
     return;
   }
-  zoomPromoInfo.textContent = `Promo Source: ${source}`;
+  zoomPromoInfo.textContent = `${reprintSource ? "Reprint Source" : "Promo Source"}: ${source}`;
   zoomPromoInfo.classList.remove("hidden");
 }
 
@@ -1826,11 +1839,11 @@ function adjustCardQuantityByCode(code, delta) {
   const isVisible = matchesActiveFilters(card, currentQty);
 
   if (wasVisible !== isVisible) {
-    renderTable();
+    renderTable({ preserveScroll: true });
     return true;
   }
 
-  renderTable();
+  refreshRenderedDeckStateForKey(deckGroupKeyForCard(card));
   return true;
 }
 
@@ -2051,6 +2064,7 @@ function setCodeFromCardCode(cardCode) {
 }
 
 function filterSetCodeFromCardCode(cardCode) {
+  if (isReprintCardCode(cardCode)) return "REPRINTS";
   return canonicalSetCode(setCodeFromCardCode(cardCode));
 }
 
@@ -2402,12 +2416,17 @@ function setDeckRequirementQuantity(card, nextQuantity) {
   const key = deckGroupKeyForCard(card);
   const safeQuantity = Math.max(0, Math.trunc(nextQuantity));
   const currentEntry = activeDeck.requirements.get(key);
+  const wasVisible = matchesActiveFilters(card);
 
   if (safeQuantity <= 0) {
     activeDeck.requirements.delete(key);
     syncActiveDeckTextContent();
-    refreshBulkAddPresentation();
-    refreshRenderedDeckStateForKey(key);
+    if (wasVisible !== matchesActiveFilters(card)) {
+      renderTable({ preserveScroll: true });
+    } else {
+      refreshBulkAddPresentation();
+      refreshRenderedDeckStateForKey(key);
+    }
     return 0;
   }
 
@@ -2418,8 +2437,12 @@ function setDeckRequirementQuantity(card, nextQuantity) {
     order: currentEntry?.order ?? activeDeck.requirements.size,
   });
   syncActiveDeckTextContent();
-  refreshBulkAddPresentation();
-  refreshRenderedDeckStateForKey(key);
+  if (wasVisible !== matchesActiveFilters(card)) {
+    renderTable({ preserveScroll: true });
+  } else {
+    refreshBulkAddPresentation();
+    refreshRenderedDeckStateForKey(key);
+  }
   return safeQuantity;
 }
 
@@ -3353,7 +3376,7 @@ function createRow(card) {
   fragment.querySelector(".card-name").textContent = card.name;
   fragment.querySelector(".card-code").textContent = card.code;
   fragment.querySelector(".card-set").textContent = card.setCode;
-  fragment.querySelector(".promo-source").textContent = card.promoSource;
+  fragment.querySelector(".promo-source").textContent = card.reprintSource || card.promoSource;
   syncDeckPresentation();
 
   function syncDeckPresentation() {
@@ -3383,7 +3406,7 @@ function createRow(card) {
     qtyEl.textContent = String(currentQty);
 
     if (previousVisibility !== isVisible) {
-      renderTable();
+      renderTable({ preserveScroll: true });
       return currentQty;
     }
 
@@ -3512,12 +3535,32 @@ function rowForCard(card) {
   return row;
 }
 
-function renderTable() {
+function captureTableScrollState() {
+  return {
+    tableTop: tableWrap ? tableWrap.scrollTop : 0,
+    tableLeft: tableWrap ? tableWrap.scrollLeft : 0,
+    windowX: window.scrollX || 0,
+    windowY: window.scrollY || 0,
+  };
+}
+
+function restoreTableScrollState(state) {
+  if (!state) return;
+  if (tableWrap) {
+    tableWrap.scrollTop = state.tableTop;
+    tableWrap.scrollLeft = state.tableLeft;
+  }
+  window.scrollTo(state.windowX, state.windowY);
+}
+
+function renderTable(options = {}) {
+  const scrollState = options.preserveScroll ? captureTableScrollState() : null;
   closeZoom();
   const rows = filteredCards();
   const fragment = document.createDocumentFragment();
   rows.forEach((card) => fragment.appendChild(rowForCard(card)));
   tableBody.replaceChildren(fragment);
+  restoreTableScrollState(scrollState);
 }
 
 function syncCardCaches(newCardsForScan = []) {
@@ -3552,6 +3595,7 @@ function cardFromCsvRow(row, cardTypeMap) {
     cardText: row["Card Text"] || "",
     artist: row["Artist"] || "Uncredited",
     promoSource: row["Promo Obtain Source (if PR in code)"] || "",
+    reprintSource: row["Reprint Source"] || "",
     artUrl: row["Art URL"] || "",
     setCode: setCodeFromCardCode(rawCode),
     filterSetCode: filterSetCodeFromCardCode(rawCode),
@@ -3597,6 +3641,7 @@ function ensureMissingFrontCardOverrides() {
       defense: "",
       artist: "Uncredited",
       promoSource: "",
+      reprintSource: "",
       artUrl: "",
       setCode: setCodeFromCardCode(entry.code),
       filterSetCode: filterSetCodeFromCardCode(entry.code),
@@ -3623,6 +3668,7 @@ function ensureKnownDualEntries() {
     defense: "",
     artist: "Uncredited",
     promoSource: "",
+    reprintSource: "",
     artUrl: "",
     setCode: "BP08",
     filterSetCode: "BP08",
