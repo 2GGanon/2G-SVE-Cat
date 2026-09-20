@@ -32094,6 +32094,21 @@
     "Card Cost": "2",
     "Defense": "4"
   },
+  "PCS01-001EN": {
+    "Attack": "4",
+    "Card Cost": "4",
+    "Defense": "4"
+  },
+  "PCS01-002EN": {
+    "Attack": "3",
+    "Card Cost": "10",
+    "Defense": "3"
+  },
+  "PCS01-003EN": {
+    "Attack": "2",
+    "Card Cost": "2",
+    "Defense": "3"
+  },
   "PR-000EN": {
     "Attack": "2",
     "Card Cost": "2",
