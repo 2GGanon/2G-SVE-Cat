@@ -28,7 +28,7 @@ const DUAL_SIDE_GROUPS = [
   ["BP09-005EN", "BP09-005EN_URA"],
   ["BP09-P12EN", "BP09-P12EN_URA"],
 ];
-const ONE_COPY_SET_CODES = new Set(["GFB01A", "GFB01B", "GFB01C", "GFB01D", "GFD01", "GFD02", "GFE01"]);
+const ONE_COPY_SET_CODES = new Set(["GFB01A", "GFB01B", "GFB01C", "GFB01D", "GFD01", "GFD02", "GFE01", "GFE02"]);
 const CLASS_FILTER_ORDER = [
   "Forestcraft",
   "Swordcraft",
@@ -60,6 +60,8 @@ const SET_FILTER_ORDER = [
   "BP18",
   "BP19",
   "BP20",
+  "BP21",
+  "BP22",
   "SP01",
   "PCS01",
   "PR",
@@ -76,7 +78,7 @@ const SET_FILTER_ORDER = [
   "GFB01",
   "GFD01",
   "GFD02",
-  "GFE01",
+  "GFE",
   "SD",
   "SS",
   "SDD",
@@ -567,6 +569,8 @@ const SET_NAME_BY_CODE = {
   BP18: "Neometropolis",
   BP19: "Eightfold Retribution",
   BP20: "Omens & Heirs",
+  BP21: "Academy Royale",
+  BP22: "Dusk of Calamity",
   SDD01: "Showdown Deck: Forestcraft",
   SDD02: "Showdown Deck: Swordcraft",
   SDD03: "Showdown Deck: Runecraft",
@@ -594,7 +598,9 @@ const SET_NAME_BY_CODE = {
   GFB01D: "Guide to Glory (Dragoncraft)",
   GFD01: "Luxheart Legends",
   GFD02: "Treacherous Ambitions",
+  GFE: "Gloryfinder Events",
   GFE01: "Gloryfinder Events Vol. 1",
+  GFE02: "Gloryfinder Events Vol. 2",
   SD: "Starter Decks",
   SD01: "Regal Fairy Princess",
   SD02: "Blade of Resentment",
@@ -643,6 +649,7 @@ function normalizeCardCode(rawCode) {
 
 function canonicalSetCode(rawSetCode) {
   const normalized = normalizeSetCodeForLookup(rawSetCode);
+  if (/^GFE0[12]$/.test(normalized)) return "GFE";
   if (/^CSD02[ABC]$/.test(normalized)) return "CSD02";
   if (/^CSD03[AB]$/.test(normalized)) return "CSD03";
   if (/^GFB01[ABCD]$/.test(normalized)) return "GFB01";
