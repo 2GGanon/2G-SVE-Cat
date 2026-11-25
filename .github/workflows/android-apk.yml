@@ -187,6 +187,32 @@ jobs:
             print(f"No minification flags needed patching in {target}")
           PY
 
+      - name: Work around Android Lint JavaDoc parser crash
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          kts = Path("android/app/build.gradle.kts")
+          groovy = Path("android/app/build.gradle")
+          target = kts if kts.exists() else groovy
+          if not target.exists():
+            raise SystemExit("Could not find android/app/build.gradle(.kts)")
+
+          text = target.read_text(encoding="utf-8")
+          setting = "checkReleaseBuilds = false" if target.suffix == ".kts" else "checkReleaseBuilds false"
+          updated, count = re.subn(
+            r"(?m)^(android\s*\{)",
+            lambda match: f"{match.group(1)}\n    lint {{\n        {setting}\n    }}",
+            text,
+            count=1,
+          )
+          if count != 1:
+            raise SystemExit(f"Could not locate android block in {target}")
+          target.write_text(updated, encoding="utf-8")
+          print(f"Disabled release lint check in {target}")
+          PY
+
       - name: Add ML Kit R8 compatibility rules
         run: |
           python - <<'PY'
